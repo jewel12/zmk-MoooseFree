@@ -312,10 +312,8 @@
         <p>編集後、上部の「ダウンロード」で.keymapファイルとして保存。</p>
         <p><b>HYPER について:</b><br>
         HYPERキー = Ctrl + Shift + Alt + Win を同時押し。OS標準ショートカットと衝突しないため、グローバルなアプリ起動・ウィンドウ操作の割当に使われます。<br>
-        ZMK での書き方:<br>
-        <code>&amp;kp LC(LS(LA(LG(F))))</code> — HYPER+F を1キーに割当<br>
-        <code>&amp;mt LC(LS(LA(LGUI))) F</code> — ホールド=HYPER, タップ=F<br>
-        ビルダーの「HYPER+key」プリセットを使うとキーコード入力欄に F や SPACE を入れるだけでOK。<br>
+        <b>HYPER+F を 1キー押しただけで送りたい場合</b>は、ビヘイビア欄の「HYPER+key」プリセットを選んで F を入れる（生成される ZMK: <code>&amp;kp LC(LS(LA(LG(F))))</code>）。<br>
+        ※ <code>&amp;mt</code>（モッドタップ）は「ホールドで修飾／タップで別キー」の挙動なので、HYPER+F 同時押しの用途には使いません。<br>
         <code>✦F</code> と表示されているキーは HYPER+F、<code>✱F</code> は MEH+F (Ctrl+Shift+Alt+F)。</p>
       </div>
     </details>
@@ -662,9 +660,6 @@ const QUICK_KEYS = [
   // MEH (Ctrl+Shift+Alt) — popular on macOS
   { b: "&kp LC(LS(LA(F)))", a: "meh f メー ✱" },
   { b: "&kp LC(LS(LA(SPACE)))", a: "meh space メー" },
-  // HYPER hold (as a modifier in &mt)
-  { b: "&mt LC(LS(LA(LGUI))) SPACE", a: "hyper hold space ハイパー長押し" },
-  { b: "&mt LC(LS(LA(LGUI))) TAB", a: "hyper hold tab" },
   // Japanese IME (use with JP IME on the OS)
   { b: "&kp JP_MHEN", a: "無変換 muhenkan windows int5" },
   { b: "&kp JP_HENK", a: "変換 henkan windows int4" },
@@ -1133,8 +1128,8 @@ const MODS = [
   { val: "RALT", label: "RALT (⌥R)" },
   { val: "LWIN", label: "LWIN / LGUI (⌘L)" },
   { val: "RWIN", label: "RWIN / RGUI (⌘R)" },
-  { val: "LC(LS(LA(LGUI)))", label: "HYPER (⌃+⇧+⌥+⌘)" },
-  { val: "LC(LS(LALT))", label: "MEH (⌃+⇧+⌥)" },
+  // 同時押しの HYPER+key / MEH+key はビヘイビア欄の「HYPER+key」「MEH+key」プリセットから作る。
+  // &mt のホールド=HYPER は混同を避けるためここからは除外。
 ];
 const BTCMDS = ["BT_SEL 0", "BT_SEL 1", "BT_SEL 2", "BT_SEL 3", "BT_SEL 4", "BT_NXT", "BT_PRV", "BT_CLR", "BT_CLR_ALL"];
 const MBTNS = ["LCLK", "RCLK", "MCLK", "MB4", "MB5"];

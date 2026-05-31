@@ -120,14 +120,14 @@
                 &kp TAB  &kp Q  &kp W  &kp E  &kp R  &kp T  &kp RIGHT
                 &kp LCTRL  &kp A  &kp S  &kp D  &kp F  &kp G  &kp LEFT
                 &kp LSHIFT  &kp Z  &kp X  &kp C  &kp V  &kp B  &none  &kp DOWN
-                &kp TILDE  &kp GRAVE  &mt LC(LS(LA(LGUI))) K  &kp LWIN  &none  &none  &kp UP
+                &kp TILDE  &kp GRAVE  &kp LC(LS(LA(LGUI(K))))  &kp LWIN  &none  &none  &kp UP
                 &lt_to_layer_0 2 LALT  &lt 1 SPACE  &kp ESC  &kp LANG4  &none
                 &bootloader  &none  &none  &none  &bt BT_SEL 4  &bt BT_SEL 5  &bt BT_SEL 6  &bt BT_CLR
 
                 &kp UP  &kp Y  &kp U  &kp I  &kp O  &kp P  &kp MINUS
                 &kp DOWN  &kp H  &kp J  &kp K  &kp L  &kp ENTER  &kp EQUAL
                 &kp RIGHT  &none  &kp N  &kp M  &kp COMMA  &kp DOT  &kp SLASH  &kp RSHIFT
-                &kp LEFT  &mkp LCLK  &mkp RCLK  &kp RWIN  &mt LC(LS(LA(LGUI))) F  &kp BSLH  &kp SEMI
+                &kp LEFT  &mkp LCLK  &mkp RCLK  &kp RWIN  &kp LC(LS(LA(LGUI(F))))  &kp BSLH  &kp SEMI
                 &none  &kp INT5  &none  &lt_to_layer_0 1 BSPC  &lt_to_layer_0 2 RALT
                 &bt BT_CLR_ALL  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &bt BT_SEL 5  &bt BT_CLR  &bootloader
             >;
