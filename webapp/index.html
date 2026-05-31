@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoooseFree Keymap Editor</title>
+<style>
+  :root {
+    --unit: 60px;
+    --bg: #1a1a1f;
+    --panel: #24242c;
+    --panel2: #2e2e38;
+    --border: #3a3a45;
+    --text: #e8e8ec;
+    --muted: #8a8a95;
+    --accent: #5aa9e6;
+    --accent2: #ffb84d;
+    --danger: #e85a5a;
+    --key-bg: #3a3a48;
+    --key-bg-hover: #4a4a5c;
+    --key-selected: #5aa9e6;
+    --key-special: #4a3a48;
+    --key-modified: #ffb84d;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Hiragino Sans", "Segoe UI", sans-serif;
+    height: 100vh; overflow: hidden;
+  }
+  body { display: flex; flex-direction: column; }
+  header {
+    padding: 10px 16px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .titlebar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+  h1 { margin: 0; font-size: 16px; font-weight: 600; }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar button, .toolbar label.btn {
+    padding: 6px 12px;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .toolbar button:hover, .toolbar label.btn:hover { background: var(--border); }
+  .toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #0d0d12; font-weight: 600; }
+  .toolbar input[type="file"] { display: none; }
+  .layer-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .layer-tab {
+    padding: 6px 14px;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .layer-tab.active { background: var(--accent); border-color: var(--accent); color: #0d0d12; font-weight: 600; }
+  main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    min-height: 0;
+  }
+  .keyboard-wrap {
+    overflow: auto;
+    padding: 24px;
+    background: var(--bg);
+  }
+  .keyboard {
+    position: relative;
+    width: 1200px;
+    height: 550px;
+    transform-origin: top left;
+  }
+  .key {
+    position: absolute;
+    background: var(--key-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px;
+    overflow: hidden;
+    user-select: none;
+    transition: background 0.1s ease;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+  .key:hover { background: var(--key-bg-hover); }
+  .key.selected { outline: 2px solid var(--accent); outline-offset: 2px; z-index: 10; }
+  .key.special { background: var(--key-special); }
+  .key.modified { box-shadow: inset 0 0 0 2px var(--accent2); }
+  .key-label { font-weight: 600; font-size: 11px; }
+  .key-sub { font-size: 9px; color: var(--muted); margin-top: 2px; }
+  .key-pos { position: absolute; top: 2px; left: 4px; font-size: 8px; color: var(--muted); opacity: 0.5; }
+  .editor {
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    padding: 0;
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .ed-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); z-index: 5; }
+  .ed-tab { flex: 1; padding: 10px 12px; background: transparent; color: var(--muted); border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 13px; font-family: inherit; }
+  .ed-tab:hover { color: var(--text); background: var(--panel2); }
+  .ed-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .ed-tab .badge { background: var(--accent); color: #0d0d12; border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 4px; }
+  .ed-pane { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .combo-card { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+  .combo-card:hover { background: var(--border); }
+  .combo-card.editing { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .combo-card .combo-head { display: flex; justify-content: space-between; align-items: center; }
+  .combo-card .combo-name { font-weight: 600; font-size: 13px; }
+  .combo-card .combo-binding { font-family: "SF Mono", Consolas, monospace; font-size: 11px; color: var(--accent); }
+  .combo-card .combo-keys { font-size: 11px; color: var(--muted); }
+  .combo-positions { display: flex; flex-wrap: wrap; gap: 4px; min-height: 28px; padding: 6px; background: var(--bg); border: 1px dashed var(--border); border-radius: 4px; }
+  .combo-pos-chip { background: var(--accent); color: #0d0d12; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .combo-empty { color: var(--muted); font-size: 12px; padding: 12px; text-align: center; background: var(--panel2); border-radius: 6px; }
+  .key.combo-involved { box-shadow: inset 0 0 0 2px var(--accent); background: rgba(90, 169, 230, 0.2); }
+  .key.combo-other { opacity: 0.6; box-shadow: inset 0 0 0 1px rgba(255, 184, 77, 0.5); }
+  .combo-form-row { display: grid; grid-template-columns: 1fr; gap: 4px; }
+  .combo-form-row label { font-size: 12px; color: var(--muted); }
+  .combo-form-row input[type="text"], .combo-form-row input[type="number"] {
+    width: 100%; padding: 6px 10px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit;
+  }
+  .combo-form-row input:focus { outline: none; border-color: var(--accent); }
+  .combo-layer-checks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .combo-layer-checks label { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .combo-layer-checks input { margin: 0; }
+  .danger-btn { background: var(--danger); color: white; border-color: var(--danger); }
+  .danger-btn:hover { opacity: 0.85; }
+  .combo-form { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--panel2); border: 1px solid var(--accent); border-radius: 6px; }
+  .combo-form[hidden] { display: none !important; }
+  .combo-add-banner { position: sticky; top: 0; background: var(--accent); color: #0d0d12; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 5; }
+  .bulk-add-banner { position: sticky; top: 0; background: var(--accent2); color: #0d0d12; padding: 8px 14px; border-radius: 6px; font-weight: 600; font-size: 13px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); z-index: 5; }
+  .key.bulk-selected { box-shadow: inset 0 0 0 3px var(--accent2); background: rgba(255, 184, 77, 0.25); }
+  .bulk-preset { padding: 5px 10px; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; cursor: pointer; font-size: 11px; font-family: "SF Mono", Consolas, monospace; }
+  .bulk-preset:hover { background: var(--accent2); color: #0d0d12; border-color: var(--accent2); }
+  .editor h2 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--accent); }
+  .editor h3 { margin: 12px 0 4px 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .key-info { background: var(--panel2); padding: 10px; border-radius: 6px; font-size: 12px; }
+  .key-info .row { display: flex; justify-content: space-between; gap: 8px; }
+  .key-info .label { color: var(--muted); }
+  textarea#bindingInput {
+    width: 100%;
+    min-height: 80px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    resize: vertical;
+  }
+  .editor-actions { display: flex; gap: 8px; }
+  .editor-actions button {
+    flex: 1;
+    padding: 8px 12px;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .editor-actions button.primary { background: var(--accent); color: #0d0d12; border-color: var(--accent); font-weight: 600; }
+  .editor-actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input[type="search"], .bld-input {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  input[type="search"] { margin-bottom: 4px; }
+  input[type="search"]:focus, .bld-input:focus { outline: none; border-color: var(--accent); }
+  .builder { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .bld-row { display: grid; grid-template-columns: 80px 1fr; gap: 8px; align-items: center; }
+  .bld-row label { font-size: 12px; color: var(--muted); }
+  .bld-input { padding: 5px 8px; font-size: 13px; }
+  select.bld-input { cursor: pointer; }
+  .bld-divider { text-align: center; font-size: 11px; color: var(--muted); margin: 4px 0; }
+  .bld-preview { font-family: "SF Mono", Consolas, monospace; font-size: 12px; padding: 6px 10px; background: var(--bg); border-radius: 4px; color: var(--accent); }
+  .quick-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  mark { background: var(--accent2); color: #0d0d12; padding: 0 1px; border-radius: 2px; }
+  .quick-list button {
+    padding: 5px 6px;
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: "SF Mono", Consolas, monospace;
+    text-align: left;
+  }
+  .quick-list button:hover { background: var(--border); }
+  .status {
+    padding: 6px 10px;
+    background: var(--panel2);
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .status.error { color: var(--danger); }
+  .status.success { color: var(--accent); }
+  details summary { cursor: pointer; padding: 4px 0; font-size: 12px; color: var(--muted); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; width: 80%; max-width: 900px; max-height: 90vh; display: flex; flex-direction: column; gap: 8px; }
+  .modal textarea { flex: 1; min-height: 60vh; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font-family: "SF Mono", Consolas, monospace; font-size: 12px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .zoom-controls { display: inline-flex; gap: 4px; align-items: center; }
+</style>
+</head>
+<body>
+<header>
+  <div class="titlebar">
+    <h1>MoooseFree Keymap Editor</h1>
+    <div class="toolbar">
+      <label class="btn" for="fileInput">.keymap 読み込み</label>
+      <input type="file" id="fileInput" accept=".keymap,.dtsi,.txt">
+      <button id="resetBtn">デフォルトに戻す</button>
+      <button id="clearStorageBtn" title="ローカルストレージの保存データを削除">保存削除</button>
+      <button id="previewBtn">プレビュー</button>
+      <button id="downloadBtn" class="primary">ダウンロード</button>
+      <span id="savedIndicator" style="font-size:12px;color:var(--muted);margin-left:4px;">未保存</span>
+      <span class="zoom-controls">
+        <button id="zoomOut">−</button>
+        <span id="zoomLabel" style="font-size:12px;color:var(--muted);min-width:40px;text-align:center;">100%</span>
+        <button id="zoomIn">+</button>
+      </span>
+    </div>
+  </div>
+  <div class="layer-tabs" id="layerTabs"></div>
+</header>
+<main>
+  <div class="keyboard-wrap" id="keyboardWrap">
+    <div id="comboAddBanner" class="combo-add-banner" hidden>
+      ⚡ コンボ追加モード — キーボードのキーをクリックして同時押しに含めるキーを選択（再クリックで除外）
+    </div>
+    <div id="bulkAddBanner" class="bulk-add-banner" hidden>
+      🧹 一括編集モード — キーをクリックして選択（再クリックで解除）。右パネルで「適用」を押すと一気に書き換え
+    </div>
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+  <aside class="editor">
+    <div class="ed-tabs">
+      <button class="ed-tab active" data-pane="key">⚙ キー編集</button>
+      <button class="ed-tab" data-pane="bulk">🧹 一括</button>
+      <button class="ed-tab" data-pane="combo">⚡ コンボ <span id="comboCount" class="badge">0</span></button>
+    </div>
+    <div id="paneKey" class="ed-pane">
+    <div class="key-info" id="keyInfo">キーを選択してください</div>
+    <h3>ビヘイビアビルダー</h3>
+    <div class="builder">
+      <div class="bld-row">
+        <label>ビヘイビア</label>
+        <select id="bldBehavior" class="bld-input"></select>
+      </div>
+      <div id="bldParams"></div>
+      <div class="bld-preview" id="bldPreview">&kp TAB</div>
+    </div>
+    <div class="bld-divider">— または直接編集 —</div>
+    <textarea id="bindingInput" placeholder="例: &amp;kp TAB" spellcheck="false"></textarea>
+    <datalist id="keycodeList"></datalist>
+    <div class="editor-actions">
+      <button id="revertBtn">元に戻す</button>
+      <button id="applyBtn" class="primary">適用</button>
+    </div>
+    <div class="status" id="status">準備完了</div>
+    <h3>クイック挿入（クリックで挿入）</h3>
+    <input type="search" id="quickSearch" placeholder="検索: tab / コピー / shift / bt..." autocomplete="off" spellcheck="false">
+    <div class="quick-list" id="quickInsert"></div>
+    <div id="quickEmpty" class="status" style="display:none;">該当なし</div>
+    <details>
+      <summary>ヘルプ</summary>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5;padding-top:4px;">
+        <p>各キーをクリックして、右側のテキストエリアでZMKバインディングを編集できます。</p>
+        <p><b>例:</b><br>
+        <code>&amp;kp TAB</code> — Tabキー<br>
+        <code>&amp;kp LS(N1)</code> — Shift+1<br>
+        <code>&amp;mo 2</code> — レイヤー2を押している間有効<br>
+        <code>&amp;lt 1 SPACE</code> — タップでSPACE、ホールドでレイヤー1<br>
+        <code>&amp;bt BT_SEL 1</code> — Bluetooth プロファイル1<br>
+        <code>&amp;none</code> — 何もしない<br>
+        <code>&amp;trans</code> — 下のレイヤーに透過</p>
+        <p>編集後、上部の「ダウンロード」で.keymapファイルとして保存。</p>
+        <p><b>HYPER について:</b><br>
+        HYPERキー = Ctrl + Shift + Alt + Win を同時押し。OS標準ショートカットと衝突しないため、グローバルなアプリ起動・ウィンドウ操作の割当に使われます。<br>
+        ZMK での書き方:<br>
+        <code>&amp;kp LC(LS(LA(LG(F))))</code> — HYPER+F を1キーに割当<br>
+        <code>&amp;mt LC(LS(LA(LGUI))) F</code> — ホールド=HYPER, タップ=F<br>
+        ビルダーの「HYPER+key」プリセットを使うとキーコード入力欄に F や SPACE を入れるだけでOK。<br>
+        <code>✦F</code> と表示されているキーは HYPER+F、<code>✱F</code> は MEH+F (Ctrl+Shift+Alt+F)。</p>
+      </div>
+    </details>
+    </div><!-- /paneKey -->
+    <div id="paneBulk" class="ed-pane" hidden>
+      <h2 style="margin:0;font-size:14px;color:var(--accent2);">🧹 一括編集</h2>
+      <p style="margin:0;font-size:12px;color:var(--muted);">複数キーを選択して、同じバインディングを一気に設定。デフォルトの割当を全消し（<code>&amp;none</code>）するときに便利。</p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;background:var(--panel2);padding:8px;border-radius:6px;">
+        <button id="bulkSelectAll" style="padding:5px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:12px;">全選択</button>
+        <button id="bulkInvert" style="padding:5px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:12px;">反転</button>
+        <button id="bulkDeselect" style="padding:5px 10px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px;cursor:pointer;font-size:12px;">解除</button>
+        <span id="bulkCount" style="font-size:12px;color:var(--accent2);font-weight:600;margin-left:auto;">0 個選択</span>
+      </div>
+      <div class="combo-form-row">
+        <label>適用するバインディング</label>
+        <input id="bulkBinding" type="text" value="&amp;none" spellcheck="false">
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        <button class="bulk-preset" data-binding="&amp;none">&amp;none</button>
+        <button class="bulk-preset" data-binding="&amp;trans">&amp;trans</button>
+        <button class="bulk-preset" data-binding="&amp;kp TAB">&amp;kp TAB</button>
+        <button class="bulk-preset" data-binding="&amp;bootloader">&amp;bootloader</button>
+      </div>
+      <div class="combo-form-row">
+        <label>適用範囲</label>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="bulkScope" value="layer" checked>
+            <span>現在のレイヤーのみ <span id="bulkScopeLayerName" style="color:var(--muted);"></span></span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="radio" name="bulkScope" value="all">
+            <span>全レイヤーに適用 <span style="color:var(--muted);">(同じ位置のキーすべて)</span></span>
+          </label>
+        </div>
+      </div>
+      <div class="editor-actions">
+        <button id="bulkCancelBtn">キャンセル</button>
+        <button id="bulkApplyBtn" class="primary">適用</button>
+      </div>
+      <details>
+        <summary>ヘルプ</summary>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;padding-top:4px;">
+          <p><b>使い方:</b><br>1. 「全選択」または個別にキーをクリックして選択<br>2. バインディング欄に <code>&amp;none</code> 等を入力<br>3. 適用範囲を選んで「適用」</p>
+          <p>選択中のキーはオレンジ枠で表示されます。</p>
+          <p>注意: 操作は取り消せません（個別キーの「元に戻す」は使えますが、一括Undoはありません）。先に「プレビュー」で確認しておくと安心。</p>
+        </div>
+      </details>
+    </div><!-- /paneBulk -->
+    <div id="paneCombo" class="ed-pane" hidden>
+      <h2 style="margin:0;font-size:14px;color:var(--accent);">⚡ コンボ（同時押し）</h2>
+      <p style="margin:0;font-size:12px;color:var(--muted);">複数のキーを同時に押すと別のキー入力を発動。タイムアウト内に全部押す必要があります。</p>
+      <div id="comboList"></div>
+      <button id="newComboBtn" class="primary" style="padding:8px;background:var(--accent);color:#0d0d12;border:none;border-radius:6px;cursor:pointer;font-weight:600;">+ 新しいコンボを作る</button>
+      <div id="comboForm" class="combo-form" hidden>
+        <h3 id="comboFormTitle" style="margin:0;font-size:13px;color:var(--accent);">新規コンボ</h3>
+        <div class="combo-form-row">
+          <label>名前 (識別子, 英数_のみ)</label>
+          <input id="cName" type="text" placeholder="combo_esc" spellcheck="false">
+        </div>
+        <div class="combo-form-row">
+          <label>キー位置 <span style="color:var(--accent2);">← キーボードのキーをクリックして追加/削除</span></label>
+          <div id="cPositions" class="combo-positions"></div>
+        </div>
+        <div class="combo-form-row">
+          <label>バインディング (発動するZMK挙動)</label>
+          <input id="cBinding" type="text" placeholder="&amp;kp ESC" spellcheck="false">
+          <div style="font-size:11px;color:var(--muted);">「キー編集」タブのビルダーで作ったテキストを貼り付けてもOK</div>
+        </div>
+        <div class="combo-form-row">
+          <label>タイムアウト (ms) — 全キーをこの時間内に押す</label>
+          <input id="cTimeout" type="number" min="0" value="50">
+        </div>
+        <div class="combo-form-row">
+          <label>対象レイヤー (空=全レイヤー有効)</label>
+          <div id="cLayers" class="combo-layer-checks"></div>
+        </div>
+        <div class="editor-actions">
+          <button id="cDeleteBtn" class="danger-btn" hidden>削除</button>
+          <button id="cCancelBtn">キャンセル</button>
+          <button id="cSaveBtn" class="primary">保存</button>
+        </div>
+      </div>
+      <details>
+        <summary>ヘルプ</summary>
+        <div style="font-size:12px;color:var(--muted);line-height:1.5;padding-top:4px;">
+          <p>コンボの例: J + K を同時押しで ESC、A + S で TAB など。</p>
+          <p>タイムアウトは普通 30〜80ms 程度。短すぎると発動しにくく、長すぎると誤発動が増えます。</p>
+          <p>同じ位置を含むコンボが複数ある場合、より長いコンボ（キー数が多い方）が優先されます。</p>
+          <p>キーボード表示上、編集中コンボに含まれるキーは青枠で表示されます。</p>
+        </div>
+      </details>
+    </div><!-- /paneCombo -->
+  </aside>
+</main>
+
+<script>
+"use strict";
+
+const LAYOUT = [
+  { col: 6, row: 0, x: 0,    y: 1.3 },
+  { col: 5, row: 0, x: 1,    y: 1.3 },
+  { col: 4, row: 0, x: 2,    y: 1.1 },
+  { col: 3, row: 0, x: 3,    y: 1 },
+  { col: 2, row: 0, x: 4,    y: 1.1 },
+  { col: 3, row: 5, x: 5,    y: 1.2 },
+  { col: 0, row: 4, x: 9.0,  y: 7.0, w: 0.5, h: 0.5 },
+  { col: 6, row: 1, x: 0,    y: 2.3 },
+  { col: 5, row: 1, x: 1,    y: 2.3 },
+  { col: 4, row: 1, x: 2,    y: 2.1 },
+  { col: 3, row: 1, x: 3,    y: 2 },
+  { col: 2, row: 1, x: 4,    y: 2.1 },
+  { col: 3, row: 4, x: 5,    y: 2.2 },
+  { col: 0, row: 2, x: 8.0,  y: 7.0, w: 0.5, h: 0.5 },
+  { col: 6, row: 2, x: 0,    y: 3.3 },
+  { col: 5, row: 2, x: 1,    y: 3.3 },
+  { col: 4, row: 2, x: 2,    y: 3.1 },
+  { col: 3, row: 2, x: 3,    y: 3 },
+  { col: 1, row: 2, x: 4,    y: 3.1 },
+  { col: 5, row: 4, x: 5,    y: 3.2 },
+  { col: 1, row: 0, x: 8.7,  y: 4.2, r: 30 },
+  { col: 0, row: 3, x: 8.5,  y: 7.5, w: 0.5, h: 0.5 },
+  { col: 6, row: 3, x: 0,    y: 4.3 },
+  { col: 5, row: 3, x: 1,    y: 4.3 },
+  { col: 4, row: 3, x: 2,    y: 4.1 },
+  { col: 2, row: 3, x: 3,    y: 4.1, w: 1.25 },
+  { col: 2, row: 4, x: 7.1,  y: 4.5, r: 30 },
+  { col: 2, row: 5, x: 8.0,  y: 5,   r: 30 },
+  { col: 0, row: 1, x: 8.5,  y: 6.5, w: 0.5, h: 0.5 },
+  { col: 1, row: 3, x: 4.8,  y: 4.35, r: 30 },
+  { col: 6, row: 4, x: 6.2,  y: 4,   r: 30, h: 2 },
+  { col: 1, row: 4, x: 6.6,  y: 5.4, r: 30 },
+  { col: 1, row: 5, x: 7.5,  y: 5.9, r: 30 },
+  { col: 0, row: 5, x: 8.5,  y: 7.0, w: 0.5, h: 0.5 },
+  { col: 6, row: 5, x: 0.5,  y: 5.5, w: 0.5, h: 0.5 },
+  { col: 4, row: 5, x: 1.0,  y: 5.5, w: 0.5, h: 0.5 },
+  { col: 5, row: 6, x: 0.5,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 4, row: 6, x: 1.0,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 3, row: 6, x: 1.5,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 2, row: 6, x: 2.0,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 1, row: 6, x: 2.5,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 0, row: 6, x: 4.0,  y: 6.25, w: 0.5, h: 0.5 },
+  { col: 7, row: 2, x: 10,   y: 7.5, w: 0.5, h: 0.5 },
+  { col: 10, row: 5, x: 13,  y: 1.2 },
+  { col: 9, row: 0, x: 14,   y: 1.1 },
+  { col: 10, row: 0, x: 15,  y: 1 },
+  { col: 11, row: 0, x: 16,  y: 1.1 },
+  { col: 12, row: 0, x: 17,  y: 1.3 },
+  { col: 13, row: 0, x: 18,  y: 1.3 },
+  { col: 7, row: 3, x: 9.5,  y: 7.0, w: 0.5, h: 0.5 },
+  { col: 10, row: 4, x: 13,  y: 2.2 },
+  { col: 9, row: 1, x: 14,   y: 2.1 },
+  { col: 10, row: 1, x: 15,  y: 2 },
+  { col: 11, row: 1, x: 16,  y: 2.1 },
+  { col: 12, row: 1, x: 17,  y: 2.3 },
+  { col: 13, row: 1, x: 18,  y: 2.3 },
+  { col: 7, row: 5, x: 10.5, y: 7.0, w: 0.5, h: 0.5 },
+  { col: 8, row: 0, x: 9.6,  y: 4.75, r: -30 },
+  { col: 12, row: 4, x: 13,  y: 3.2 },
+  { col: 8, row: 2, x: 14,   y: 3.1 },
+  { col: 10, row: 2, x: 15,  y: 3 },
+  { col: 11, row: 2, x: 16,  y: 3.1 },
+  { col: 12, row: 2, x: 17,  y: 3.3 },
+  { col: 13, row: 2, x: 18,  y: 3.3 },
+  { col: 7, row: 4, x: 10,   y: 6.5, w: 0.5, h: 0.5 },
+  { col: 9, row: 5, x: 10.2, y: 5.6, r: -30 },
+  { col: 9, row: 4, x: 11.1, y: 5.1, r: -30 },
+  { col: 9, row: 3, x: 14.75, y: 4.1, w: 1.25 },
+  { col: 11, row: 3, x: 16,  y: 4.1 },
+  { col: 12, row: 3, x: 17,  y: 4.3 },
+  { col: 13, row: 3, x: 18,  y: 4.3 },
+  { col: 7, row: 6, x: 10.0, y: 7.0, w: 0.5, h: 0.5 },
+  { col: 8, row: 5, x: 10.7, y: 6.5, r: -30 },
+  { col: 8, row: 4, x: 11.6, y: 6,   r: -30 },
+  { col: 13, row: 4, x: 12,  y: 4.6, r: -30, h: 2 },
+  { col: 8, row: 3, x: 13.4, y: 4.95, r: -30 },
+  { col: 7, row: 1, x: 15.0, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 8, row: 6, x: 16.0, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 9, row: 6, x: 16.5, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 10, row: 6, x: 17.0, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 11, row: 6, x: 17.5, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 12, row: 6, x: 18.0, y: 6.25, w: 0.5, h: 0.5 },
+  { col: 11, row: 5, x: 17.5, y: 5.5, w: 0.5, h: 0.5 },
+  { col: 13, row: 5, x: 18.0, y: 5.5, w: 0.5, h: 0.5 },
+];
+
+// Quick-insert entries. `aliases` is extra search terms (Japanese names, descriptions).
+const QUICK_KEYS = [
+  // Basic
+  { b: "&kp TAB", a: "タブ tab" },
+  { b: "&kp ENTER", a: "エンター 改行 return" },
+  { b: "&kp SPACE", a: "スペース 空白" },
+  { b: "&kp BSPC", a: "バックスペース backspace 削除" },
+  { b: "&kp ESC", a: "エスケープ escape" },
+  { b: "&kp DEL", a: "delete デリート 削除" },
+  { b: "&kp INS", a: "insert" },
+  { b: "&kp CAPS", a: "caps lock キャプス" },
+  { b: "&kp PSCRN", a: "print screen プリントスクリーン スクショ" },
+  { b: "&kp PAUSE_BREAK", a: "pause break" },
+  // Modifiers
+  { b: "&kp LSHIFT", a: "シフト left shift" },
+  { b: "&kp RSHIFT", a: "シフト right shift" },
+  { b: "&kp LCTRL", a: "コントロール ctrl left" },
+  { b: "&kp RCTRL", a: "ctrl right" },
+  { b: "&kp LALT", a: "オルト alt left" },
+  { b: "&kp RALT", a: "alt right" },
+  { b: "&kp LWIN", a: "ウィン win windows cmd left" },
+  { b: "&kp RWIN", a: "win right" },
+  // Arrows / navigation
+  { b: "&kp UP", a: "上 矢印 arrow" },
+  { b: "&kp DOWN", a: "下 矢印 arrow" },
+  { b: "&kp LEFT", a: "左 矢印 arrow" },
+  { b: "&kp RIGHT", a: "右 矢印 arrow" },
+  { b: "&kp HOME", a: "ホーム" },
+  { b: "&kp END", a: "エンド" },
+  { b: "&kp PG_UP", a: "page up ページアップ" },
+  { b: "&kp PG_DN", a: "page down ページダウン" },
+  // Letters
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(c => ({ b: `&kp ${c}`, a: c.toLowerCase() })),
+  // Numbers
+  ...[0,1,2,3,4,5,6,7,8,9].map(n => ({ b: `&kp N${n}`, a: `数字 ${n}` })),
+  // F-keys
+  ...Array.from({length:24},(_,i)=>i+1).map(n => ({ b: `&kp F${n}`, a: "function " + n })),
+  // Symbols
+  { b: "&kp MINUS", a: "マイナス -" },
+  { b: "&kp EQUAL", a: "イコール =" },
+  { b: "&kp PLUS", a: "プラス +" },
+  { b: "&kp COMMA", a: "カンマ ," },
+  { b: "&kp DOT", a: "ドット ." },
+  { b: "&kp SLASH", a: "スラッシュ /" },
+  { b: "&kp SEMI", a: "セミコロン ;" },
+  { b: "&kp ASTRK", a: "アスタリスク *" },
+  { b: "&kp CARET", a: "キャレット ^" },
+  // Symbols (US layout)
+  { b: "&kp GRAVE", a: "バッククォート grave `" },
+  { b: "&kp TILDE", a: "チルダ tilde ~" },
+  { b: "&kp LBKT",  a: "[ 左角括弧 left bracket" },
+  { b: "&kp RBKT",  a: "] 右角括弧 right bracket" },
+  { b: "&kp LBRC",  a: "{ 左波括弧 left brace" },
+  { b: "&kp RBRC",  a: "} 右波括弧 right brace" },
+  { b: "&kp BSLH",  a: "バックスラッシュ backslash \\" },
+  { b: "&kp PIPE",  a: "パイプ pipe |" },
+  { b: "&kp SQT",   a: "シングルクォート apostrophe '" },
+  { b: "&kp DQT",   a: "ダブルクォート double quote \"" },
+  { b: "&kp COLON", a: "コロン colon :" },
+  { b: "&kp UNDER", a: "アンダースコア underscore _" },
+  { b: "&kp QMARK", a: "クエスチョン question ?" },
+  { b: "&kp EXCL",  a: "エクスクラメーション exclamation !" },
+  { b: "&kp AT",    a: "アット at @" },
+  { b: "&kp HASH",  a: "シャープ ハッシュ hash #" },
+  { b: "&kp DLLR",  a: "ドル dollar $" },
+  { b: "&kp PRCNT", a: "パーセント percent %" },
+  { b: "&kp AMPS",  a: "アンパサンド ampersand &" },
+  { b: "&kp LPAR",  a: "左カッコ left paren (" },
+  { b: "&kp RPAR",  a: "右カッコ right paren )" },
+  { b: "&kp LT",    a: "小なり less than <" },
+  { b: "&kp GT",    a: "大なり greater than >" },
+  // Numpad
+  { b: "&kp KP_N0", a: "テンキー 0" },
+  { b: "&kp KP_N1", a: "テンキー 1" },
+  { b: "&kp KP_N2", a: "テンキー 2" },
+  { b: "&kp KP_N3", a: "テンキー 3" },
+  { b: "&kp KP_DOT", a: "テンキー ." },
+  { b: "&kp KP_SLASH", a: "テンキー /" },
+  { b: "&kp KP_ASTERISK", a: "テンキー *" },
+  { b: "&kp KP_PLUS", a: "テンキー +" },
+  { b: "&kp KP_MINUS", a: "テンキー -" },
+  { b: "&kp KP_ENTER", a: "テンキー enter" },
+  // Media / consumer
+  { b: "&kp C_MUTE", a: "ミュート 消音 mute" },
+  { b: "&kp C_VOL_UP", a: "音量 上げる volume up" },
+  { b: "&kp C_VOL_DN", a: "音量 下げる volume down" },
+  { b: "&kp C_NEXT", a: "次 next" },
+  { b: "&kp C_PREV", a: "前 previous" },
+  { b: "&kp C_PP", a: "再生 一時停止 play pause" },
+  { b: "&kp C_STOP", a: "停止 stop" },
+  { b: "&kp K_APP", a: "アプリ メニュー menu app" },
+  // Modified
+  { b: "&kp LS(N1)", a: "shift 1 !" },
+  { b: "&kp LC(C)", a: "コピー copy ctrl c" },
+  { b: "&kp LC(V)", a: "ペースト paste ctrl v" },
+  { b: "&kp LC(X)", a: "カット cut ctrl x" },
+  { b: "&kp LC(Z)", a: "アンドゥ undo ctrl z" },
+  { b: "&kp LC(Y)", a: "リドゥ redo ctrl y" },
+  { b: "&kp LC(A)", a: "全選択 select all ctrl a" },
+  { b: "&kp LC(S)", a: "保存 save ctrl s" },
+  { b: "&kp LC(F)", a: "検索 find ctrl f" },
+  { b: "&kp LG(L)", a: "ロック lock win l" },
+  { b: "&kp LA(TAB)", a: "alt tab" },
+  { b: "&kp LC(LA(TAB))", a: "ctrl alt tab" },
+  { b: "&kp LC(LS(TAB))", a: "ctrl shift tab" },
+  // Layer
+  { b: "&mo 1", a: "モーメンタリ レイヤー 1" },
+  { b: "&mo 2", a: "モーメンタリ レイヤー 2" },
+  { b: "&mo 3", a: "モーメンタリ レイヤー 3" },
+  { b: "&mo 4", a: "モーメンタリ レイヤー 4" },
+  { b: "&to 0", a: "レイヤー切替 to 0" },
+  { b: "&to 1", a: "レイヤー切替 to 1" },
+  { b: "&tog 1", a: "トグル レイヤー 1" },
+  { b: "&sl 1", a: "sticky layer スティッキー 1" },
+  // Hold-tap
+  { b: "&lt 1 SPACE", a: "layer tap レイヤータップ space" },
+  { b: "&lt 2 ENTER", a: "layer tap enter" },
+  { b: "&mt LSHIFT A", a: "mod tap shift a" },
+  { b: "&mt LCTRL ESC", a: "mod tap ctrl esc" },
+  { b: "&sk LSHIFT", a: "sticky shift" },
+  // Mouse
+  { b: "&mkp LCLK", a: "マウス 左クリック left click" },
+  { b: "&mkp RCLK", a: "マウス 右クリック right click" },
+  { b: "&mkp MCLK", a: "マウス ホイール 中クリック middle click" },
+  { b: "&mkp MB4", a: "マウス 戻る back button 4" },
+  { b: "&mkp MB5", a: "マウス 進む forward button 5" },
+  { b: "&msc SCRL_UP", a: "スクロール 上 scroll up" },
+  { b: "&msc SCRL_DOWN", a: "スクロール 下 scroll down" },
+  { b: "&msc SCRL_LEFT", a: "スクロール 左 scroll left" },
+  { b: "&msc SCRL_RIGHT", a: "スクロール 右 scroll right" },
+  // Bluetooth
+  { b: "&bt BT_SEL 0", a: "bluetooth select 0" },
+  { b: "&bt BT_SEL 1", a: "bluetooth select 1" },
+  { b: "&bt BT_SEL 2", a: "bluetooth select 2" },
+  { b: "&bt BT_SEL 3", a: "bluetooth select 3" },
+  { b: "&bt BT_SEL 4", a: "bluetooth select 4" },
+  { b: "&bt BT_NXT", a: "bluetooth next 次" },
+  { b: "&bt BT_PRV", a: "bluetooth previous 前" },
+  { b: "&bt BT_CLR", a: "bluetooth clear クリア" },
+  { b: "&bt BT_CLR_ALL", a: "bluetooth clear all" },
+  { b: "&out OUT_USB", a: "output usb" },
+  { b: "&out OUT_BLE", a: "output bluetooth ble" },
+  { b: "&out OUT_TOG", a: "output toggle" },
+  // System
+  { b: "&bootloader", a: "ブートローダー bootloader" },
+  { b: "&sys_reset", a: "リセット reset system" },
+  { b: "&none", a: "なし 無効 none disable" },
+  { b: "&trans", a: "透過 transparent パススルー" },
+  { b: "&caps_word", a: "caps word キャプスワード" },
+  { b: "&key_repeat", a: "key repeat キーリピート" },
+  // HYPER (Ctrl+Shift+Alt+Win) — for global app shortcuts
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(c => ({ b: `&kp LC(LS(LA(LG(${c}))))`, a: `hyper ${c.toLowerCase()} ハイパー ✦` })),
+  ...[1,2,3,4,5,6,7,8,9,0].map(n => ({ b: `&kp LC(LS(LA(LG(N${n}))))`, a: `hyper ${n} ハイパー ✦` })),
+  { b: "&kp LC(LS(LA(LG(F1))))", a: "hyper f1 ハイパー" },
+  { b: "&kp LC(LS(LA(LG(SPACE))))", a: "hyper space ハイパー スペース" },
+  { b: "&kp LC(LS(LA(LG(TAB))))", a: "hyper tab ハイパー" },
+  { b: "&kp LC(LS(LA(LG(ENTER))))", a: "hyper enter ハイパー" },
+  // MEH (Ctrl+Shift+Alt) — popular on macOS
+  { b: "&kp LC(LS(LA(F)))", a: "meh f メー ✱" },
+  { b: "&kp LC(LS(LA(SPACE)))", a: "meh space メー" },
+  // HYPER hold (as a modifier in &mt)
+  { b: "&mt LC(LS(LA(LGUI))) SPACE", a: "hyper hold space ハイパー長押し" },
+  { b: "&mt LC(LS(LA(LGUI))) TAB", a: "hyper hold tab" },
+  // Japanese IME (use with JP IME on the OS)
+  { b: "&kp JP_MHEN", a: "無変換 muhenkan windows int5" },
+  { b: "&kp JP_HENK", a: "変換 henkan windows int4" },
+  { b: "&kp JP_EISU", a: "英数 eisu caps" },
+  // OS-specific language keys
+  { b: "&kp LANG1", a: "macos かな lang1 mac" },
+  { b: "&kp LANG2", a: "macos 英数 lang2 mac eisu" },
+];
+
+const DEFAULT_KEYMAP = String.raw`#include <behaviors.dtsi>
+#include <dt-bindings/zmk/bt.h>
+#include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/mouse.h>
+#include <dt-bindings/zmk/pointing.h>
+#include <behaviors/rgbled_widget.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+#define ZMK_POINTING_DEFAULT_SCRL_VAL 100
+
+// Leyer
+#define ARROW 1
+#define NUM 2
+#define AHK 3
+#define FUNCTION 4
+
+// Japanese
+#define JP_MINUS MINUS        // -
+#define JP_CARET EQUAL        // ^
+#define JP_YEN   INT3         // ¥
+#define JP_AT    LBKT         // @
+#define JP_LBKT  RBKT         // [
+#define JP_EISU  CAPS         // Eisu (英数)
+#define JP_SEMI  SEMI         // ;
+#define JP_COLON SQT          // :
+#define JP_RBKT  NUHS         // ]
+#define JP_COMMA COMMA        // ,
+#define JP_DOT   DOT          // .
+#define JP_SLASH SLASH        // /
+#define JP_BSLH  INT1         // (backslash)
+#define JP_MHEN  INT5         // Muhenkan (無変換)
+#define JP_HENK  INT4         // Henkan (変換)
+#define JP_EXCL  LS(N1)       // !
+#define JP_DQT   LS(N2)       // "
+#define JP_HASH  LS(N3)       // #
+#define JP_DLLR  LS(N4)       // $
+#define JP_PRCNT LS(N5)       // %
+#define JP_AMPS  LS(N6)       // &
+#define JP_SQT   LS(N7)       // '
+#define JP_LPAR  LS(N8)       // (
+#define JP_RPAR  LS(N9)       // )
+#define JP_EQUAL LS(JP_MINUS) // =
+#define JP_TILDE LS(JP_CARET) // ~
+#define JP_PIPE  LS(JP_YEN)   // |
+#define JP_GRAVE LS(JP_AT)    // ` + "`" + `
+#define JP_LBRC  LS(JP_LBKT)  // {
+#define JP_CAPS  LS(JP_EISU)  // Caps Lock
+#define JP_PLUS  LS(JP_SEMI)  // +
+#define JP_ASTRK LS(JP_COLON) // *
+#define JP_RBRC  LS(JP_RBKT)  // }
+#define JP_LT    LS(JP_COMMA) // <
+#define JP_RT    LS(JP_DOT)   // >
+#define JP_QMARK LS(JP_SLASH) // ?
+#define JP_UNDER LS(JP_BSLH)  // _
+
+/ {
+    macros {
+        to_layer_0: to_layer_0 {
+            compatible = "zmk,behavior-macro-one-param";
+            #binding-cells = <1>;
+            bindings = <&to 0 &macro_param_1to1 &kp MACRO_PLACEHOLDER>;
+            label = "TO_LAYER_0";
+        };
+        my_sp: my_sp {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&macro_tap &kp JP_MHEN>
+                , <&macro_tap &kp LS(N3)>
+                ;
+        };
+        my_dq: my_dq {
+            #binding-cells = <0>;
+            compatible = "zmk,behavior-macro";
+            bindings = <&macro_tap &kp JP_MHEN>
+                , <&macro_tap &kp LS(N2)>
+                , <&macro_tap &kp LS(N2)>
+                ;
+        };
+        my_sq: my_sq {
+            #binding-cells = <0>;
+            compatible = "zmk,behavior-macro";
+            bindings = <&macro_tap &kp JP_MHEN>
+                , <&macro_tap &kp LS(N7)>
+                , <&macro_tap &kp LS(N7)>
+                ;
+        };
+
+        my_kakko: my_kakko {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&macro_tap &kp JP_MHEN>
+                , <&macro_tap &kp LS(N8)>
+                , <&macro_tap &kp LS(N9)>
+                ;
+        };
+        my_br: my_br {
+            compatible = "zmk,behavior-macro";
+            #binding-cells = <0>;
+            bindings = <&macro_tap &kp JP_MHEN>
+                , <&macro_tap &kp JP_LT>
+                , <&macro_tap &kp B>
+                , <&macro_tap &kp R>
+                , <&macro_tap &kp JP_RT>
+                ;
+        };
+    };
+
+    behaviors {
+        lt_to_layer_0: lt_to_layer_0 {
+            compatible = "zmk,behavior-hold-tap";
+            label = "LAYER_TAP_TO_0";
+            bindings = <&mo>, <&to_layer_0>;
+            #binding-cells = <2>;
+            tapping-term-ms = <200>;
+        };
+        rot_kp: sensor_rotate_kp {
+            compatible = "zmk,behavior-sensor-rotate-var";
+            #sensor-binding-cells = <2>;
+            bindings = <&kp>, <&kp>;
+            tap-ms = <20>;
+        };
+        rot_mkp: sensor_rotate_mkp {
+            compatible = "zmk,behavior-sensor-rotate-var";
+            #sensor-binding-cells = <2>;
+            bindings = <&mkp>, <&mkp>;
+            tap-ms = <20>;
+        };
+        mouse_scroll: mouse_wheel_scrl{
+            compatible = "zmk,behavior-sensor-rotate-var";
+            #sensor-binding-cells = <2>;
+            bindings = <&msc>, <&msc>;
+            tap-ms = <20>;
+        };
+        mouse_scroll2: mouse_wheel_scrl2{
+            compatible = "zmk,behavior-sensor-rotate-var";
+            #sensor-binding-cells = <2>;
+            bindings = <&msc>, <&msc>;
+            tap-ms = <16>;
+        };
+    };
+
+    keymap {
+        compatible = "zmk,keymap";
+        default_layer {
+            bindings = <
+                &kp TAB     &kp Q      &kp W    &kp E   &kp R   &kp T                                       &kp RIGHT
+                &kp LALT    &kp A      &kp S    &kp D   &kp F   &kp G                                       &kp LEFT
+                &kp LSHIFT  &kp Z      &kp X    &kp C   &kp V   &kp B                            &kp C_MUTE &kp DOWN
+                &kp LCTRL   &kp LWIN   &kp LALT &lt_to_layer_0 4 TAB                &kp DEL      &kp ESC    &kp UP
+                                                &kp BSPC   &kp SPACE   &lt_to_layer_0 2 JP_HENK  &kp PSCRN  &none
+                &bootloader &kp D &kp C   &kp D     &bt BT_SEL 4  &bt BT_SEL 5   &bt BT_SEL 6                   &bt BT_CLR
+
+                &kp UP                              &kp Y       &kp U          &kp I          &kp O        &kp P         &kp JP_YEN
+                &kp DOWN                             &kp H       &kp J          &kp K          &kp L        &kp JP_SEMI   &kp JP_COLON
+                &kp RIGHT  &kp PSCRN                 &kp N       &kp M          &kp JP_COMMA   &kp JP_DOT   &kp JP_SLASH  &kp RSHIFT
+                &kp LEFT    &mkp LCLK  &mkp RCLK                                 &lt_to_layer_0 3 ESC        &kp JP_LBKT   &kp JP_RBKT   &kp JP_AT
+                &none  &mkp MCLK  &lt_to_layer_0 1 JP_MHEN  &kp ENTER   &kp MINUS
+                &bt BT_CLR_ALL             &bt BT_SEL 1    &bt BT_SEL 2   &bt BT_SEL 3    &bt BT_SEL 4   &bt BT_SEL 5   &bt BT_CLR   &bootloader
+            >;
+            sensor-bindings = <&mouse_scroll2 SCRL_UP SCRL_DOWN &mouse_scroll SCRL_DOWN SCRL_UP>;
+        };
+        ARROW {
+            bindings = <
+                &kp TAB     &kp Q      &kp W    &kp E   &kp R   &kp T                          &kp RIGHT
+                &kp LALT    &kp A      &kp S    &kp D   &kp F   &kp G                          &kp LEFT
+                &kp LSHIFT  &kp Z      &kp X    &kp C   &kp V   &kp B               &kp C_MUTE &kp DOWN
+                &kp LCTRL   &kp LWIN   &kp LALT &kp TAB                &kp C_MUTE   &kp ESC    &kp UP
+                                                &kp BSPC   &kp SPACE   &kp JP_HENK  &kp PSCRN  &none
+                &kp C   &kp D   &kp C   &kp D        &kp F   &kp G   &kp H                       &kp I
+
+                &kp UP                             &kp LCLK      &kp HOME       &kp UP         &kp END      &kp K_APP     &kp JP_YEN
+                &kp DOWN                           &mkp MB5      &kp LEFT       &kp DOWN       &kp RIGHT    &kp JP_SEMI   &kp JP_COLON
+                &kp RIGHT  &kp PSCRN               &mkp MB4      &my_sp         &my_dq         &my_kakko    &my_sq  &kp RSHIFT
+                &kp LEFT   &mkp LCLK  &mkp RCLK                                 &kp ESC        &kp JP_LBKT  &kp JP_RBKT   &kp JP_AT
+                &none      &mkp MCLK  &kp JP_MHEN  &my_br &kp JP_UNDER
+                &kp C           &kp D   &kp E   &kp PSCRN           &kp G   &kp H &kp G   &kp H
+            >;
+            sensor-bindings = <&inc_dec_kp LC(LS(TAB)) LC(TAB) &inc_dec_kp LC(LS(TAB)) LC(TAB)>;
+        };
+        NUM {
+            bindings = <
+                &kp TAB     &kp Q      &kp W           &kp LG(UP)       &kp R           &kp LA(LS(TAB))                  &kp RIGHT
+                &kp LALT    &kp A      &kp LG(LEFT)    &kp LC(LA(TAB))  &kp LG(RIGHT)   &kp LA(TAB)                      &kp LEFT
+                &kp LSHIFT  &kp Z      &kp X           &kp LG(DOWN)     &kp LG(T)       &kp LG(TAB)         &kp C_MUTE   &kp DOWN
+                &kp LCTRL   &kp LWIN   &kp LALT        &kp TAB                          &kp C_MUTE          &kp F13      &kp UP
+                                                                   &kp BSPC   &kp SPACE &kp JP_HENK         &kp F14      &none
+                &kp C   &kp D  &kp C   &kp D         &kp F   &kp G   &kp H                       &kp I
+
+                &kp UP                             &kp ASTRK         &kp N7       &kp N8    &kp N9       &kp MINUS     &kp JP_YEN
+                &kp DOWN                           &kp KP_SLASH      &kp N4       &kp N5    &kp N6       &kp PLUS      &kp JP_COLON
+                &kp RIGHT  &kp PSCRN               &kp SEMI          &kp N1       &kp N2    &kp N3       &kp CARET     &kp RSHIFT
+                &kp LEFT   &mkp LCLK  &mkp RCLK                                   &kp N0    &kp KP_DOT      &kp COMMA     &kp JP_AT
+                &none  &mkp MCLK  &kp JP_MHEN  &kp ENTER   &kp MINUS
+                &kp C           &kp D   &kp E   &kp PSCRN           &kp G   &kp H &kp G   &kp H
+            >;
+            sensor-bindings = <&inc_dec_kp LC(LS(TAB)) LC(TAB) &inc_dec_kp LC(LS(TAB)) LC(TAB)>;
+        };
+        AHK {
+            bindings = <
+                &kp TAB     &kp F15      &kp F16      &kp F17      &kp F18       &kp F19                  &kp RIGHT
+                &kp LALT    &kp LC(F15)  &kp LC(F16)  &kp LC(F17)  &kp LC(F18)   &kp LC(F19)              &kp LEFT
+                &kp LSHIFT  &kp LS(F15)  &kp LS(F16)  &kp LS(F17)  &kp LS(F18)   &kp LS(F19)   &kp C_MUTE &kp DOWN
+                &kp LCTRL   &kp LWIN   &kp LALT &kp TAB                          &kp DEL       &kp ESC    &kp UP
+                                                          &kp BSPC   &kp SPACE   &kp JP_HENK   &kp PSCRN  &kp ENTER
+                &kp C   &kp D   &kp C   &kp D        &kp F   &kp G   &kp H                       &kp I
+
+                &kp UP                               &kp F20     &kp F21        &kp F22        &kp F23      &kp F24       &kp JP_YEN
+                &kp DOWN                             &kp LC(F20) &kp LC(F21)    &kp LC(F22)    &kp LC(F23)  &kp LC(F24)   &kp JP_COLON
+                &kp RIGHT  &kp PSCRN                 &kp LS(F20) &kp LS(F21)    &kp LS(F22)    &kp LS(F23)  &kp LS(F24)   &kp RSHIFT
+                &kp LEFT   &mkp LCLK  &mkp RCLK                                 &kp TAB        &kp JP_LBKT  &kp JP_RBKT   &kp JP_AT
+                &none  &mkp MCLK  &lt_to_layer_0 1 JP_MHEN  &kp ENTER   &kp MINUS
+                &kp C           &kp D   &kp E        &kp PSCRN           &kp G   &kp H &kp G   &kp H
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP &inc_dec_kp C_VOL_DN C_VOL_UP>;
+        };
+        FUNCTION {
+            bindings = <
+                &kp TAB     &kp LS(N1)   &kp LS(N2)   &kp LS(N3)   &kp LS(N4)    &kp LS(N5)               &kp RIGHT
+                &kp LALT    &kp LA(N1)   &kp LA(N2)   &kp LA(N3)   &kp LA(N4)    &kp LA(N5)               &kp LEFT
+                &kp LSHIFT  &kp F1       &kp F2       &kp F3       &kp F4        &kp F5        &kp C_MUTE &kp DOWN
+                &kp LCTRL   &kp LWIN   &kp LALT &kp TAB                          &kp DEL       &kp ESC    &kp UP
+                                                          &kp BSPC   &kp SPACE   &kp JP_HENK   &kp PSCRN  &none
+                &kp C   &kp D  &kp C   &kp D         &kp F   &kp G   &kp H                       &kp I
+
+                &kp UP                               &kp LS(N6)  &kp LS(N7)     &kp LS(N8)     &kp LS(N9)   &kp LS(N0)    &kp JP_YEN
+                &kp DOWN                             &kp LC(N6)  &kp LC(N7)     &kp LC(N8)     &kp LC(N9)   &kp LC(N0)    &kp JP_COLON
+                &kp RIGHT  &kp PSCRN                 &kp F6      &kp F7         &kp F8         &kp F9       &kp F10       &kp RSHIFT
+                &kp LEFT   &mkp LCLK  &mkp RCLK                                 &kp TAB        &kp JP_LBKT  &kp JP_RBKT   &kp JP_AT
+                &none  &mkp MCLK  &lt_to_layer_0 1 JP_MHEN  &kp ENTER   &kp MINUS
+                &kp C           &kp D   &kp E        &kp PSCRN           &kp G   &kp H &kp G   &kp H
+            >;
+            sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP &inc_dec_kp C_VOL_DN C_VOL_UP>;
+        };
+    };
+};
+`;
+
+// --- Parser ---
+// Parses a .keymap text, extracting layers (blocks of the form `name { bindings = <...>; ... }`)
+// We rely on layers having `bindings = <` immediately after `{` — macros/behaviors have other
+// fields between `{` and their `bindings = <`, so they won't match.
+function parseKeymap(text) {
+  const layerRe = /(\w+)\s*\{\s*bindings\s*=\s*<([\s\S]*?)>\s*;/g;
+  const layers = [];
+  let lm;
+  while ((lm = layerRe.exec(text)) !== null) {
+    const name = lm[1];
+    const inner = lm[2];
+    const innerStart = lm.index + lm[0].indexOf(inner);
+    const innerEnd = innerStart + inner.length;
+    const bindings = tokenizeBindings(inner);
+    layers.push({ name, innerStart, innerEnd, bindings });
+  }
+  if (layers.length === 0) throw new Error("レイヤーが見つかりません");
+
+  // Locate keymap block start (for inserting a new combos block before it)
+  const keymapMatch = text.match(/keymap\s*\{\s*compatible\s*=\s*"zmk,keymap"\s*;/);
+  const keymapBlockStart = keymapMatch ? keymapMatch.index : -1;
+
+  // Parse combos (if any)
+  const { combos, comboBlockStart, comboBlockEnd } = parseCombos(text);
+
+  return { originalText: text, layers, combos, comboBlockStart, comboBlockEnd, keymapBlockStart };
+}
+
+function findMatchingBrace(text, openPos) {
+  if (text[openPos] !== "{") return -1;
+  let depth = 0;
+  for (let i = openPos; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function parseCombos(text) {
+  const startMatch = text.match(/combos\s*\{\s*compatible\s*=\s*"zmk,combos"\s*;/);
+  if (!startMatch) return { combos: [], comboBlockStart: -1, comboBlockEnd: -1 };
+  const blockStart = startMatch.index;
+  const openBrace = text.indexOf("{", blockStart);
+  const closeBrace = findMatchingBrace(text, openBrace);
+  if (closeBrace < 0) return { combos: [], comboBlockStart: -1, comboBlockEnd: -1 };
+  // Extend end past the trailing `;` (and any whitespace before it)
+  let endPos = closeBrace + 1;
+  while (endPos < text.length && /[ \t]/.test(text[endPos])) endPos++;
+  if (text[endPos] === ";") endPos++;
+  // Also consume the trailing newline so removing the block doesn't leave a blank line
+  if (text[endPos] === "\n") endPos++;
+
+  const body = text.slice(openBrace + 1, closeBrace);
+  const combos = [];
+  const childRe = /(\w[\w-]*)\s*\{([\s\S]*?)\}\s*;/g;
+  let cm;
+  while ((cm = childRe.exec(body)) !== null) {
+    const name = cm[1];
+    const inner = cm[2];
+    const keyPos = inner.match(/key-positions\s*=\s*<([^>]+)>/);
+    const bindings = inner.match(/bindings\s*=\s*<([^>]+)>/);
+    if (!keyPos || !bindings) continue;
+    const timeout = inner.match(/timeout-ms\s*=\s*<(\d+)>/);
+    const layers = inner.match(/layers\s*=\s*<([^>]+)>/);
+    const priorIdle = inner.match(/require-prior-idle-ms\s*=\s*<(\d+)>/);
+    combos.push({
+      name,
+      keyPositions: keyPos[1].trim().split(/\s+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n)),
+      binding: bindings[1].trim(),
+      timeoutMs: timeout ? parseInt(timeout[1], 10) : 50,
+      layers: layers ? layers[1].trim().split(/\s+/).map(s => parseInt(s, 10)).filter(n => !isNaN(n)) : null,
+      priorIdleMs: priorIdle ? parseInt(priorIdle[1], 10) : null,
+    });
+  }
+  return { combos, comboBlockStart: blockStart, comboBlockEnd: endPos };
+}
+
+// Split a bindings inner string into an array of binding strings.
+// A binding starts with `&` and continues until the next `&` or end.
+function tokenizeBindings(inner) {
+  // Strip comments
+  const noComments = inner
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  const tokens = noComments.split(/\s+/).filter(Boolean);
+  const bindings = [];
+  let cur = null;
+  for (const t of tokens) {
+    if (t.startsWith("&")) {
+      if (cur) bindings.push(cur.join(" "));
+      cur = [t];
+    } else {
+      if (!cur) cur = [];
+      cur.push(t);
+    }
+  }
+  if (cur && cur.length) bindings.push(cur.join(" "));
+  return bindings;
+}
+
+// Rebuild the keymap text by replacing each layer's bindings content (and combos block).
+function buildKeymap(parsed) {
+  const ops = [];
+
+  for (const layer of parsed.layers) {
+    ops.push({ start: layer.innerStart, end: layer.innerEnd, text: formatBindings(layer.bindings) });
+  }
+
+  const newComboBlock = (parsed.combos && parsed.combos.length) ? formatComboBlock(parsed.combos) : "";
+  if (parsed.comboBlockStart >= 0) {
+    ops.push({ start: parsed.comboBlockStart, end: parsed.comboBlockEnd, text: newComboBlock });
+  } else if (newComboBlock && parsed.keymapBlockStart >= 0) {
+    const lineStart = parsed.originalText.lastIndexOf("\n", parsed.keymapBlockStart) + 1;
+    const indent = parsed.originalText.slice(lineStart, parsed.keymapBlockStart);
+    ops.push({ start: lineStart, end: lineStart, text: indent + newComboBlock });
+  }
+
+  ops.sort((a, b) => b.start - a.start);
+  let text = parsed.originalText;
+  for (const op of ops) {
+    text = text.slice(0, op.start) + op.text + text.slice(op.end);
+  }
+  return text;
+}
+
+function formatComboBlock(combos) {
+  let out = `combos {\n        compatible = "zmk,combos";\n`;
+  for (const c of combos) {
+    out += `        ${c.name} {\n`;
+    out += `            timeout-ms = <${c.timeoutMs}>;\n`;
+    if (c.priorIdleMs != null) out += `            require-prior-idle-ms = <${c.priorIdleMs}>;\n`;
+    out += `            key-positions = <${c.keyPositions.join(" ")}>;\n`;
+    out += `            bindings = <${c.binding}>;\n`;
+    if (c.layers && c.layers.length) out += `            layers = <${c.layers.join(" ")}>;\n`;
+    out += `        };\n`;
+  }
+  out += `    };\n\n`;
+  return out;
+}
+
+function formatBindings(bindings) {
+  // Lay out 84 keys roughly in groups matching the original
+  // Group sizes for MoooseFree (per side): 7 7 8 7 5 8 (left) + 7 7 8 7 5 8 (right)
+  const groups = [7, 7, 8, 7, 5, 8, 7, 7, 8, 7, 5, 8];
+  let out = "\n";
+  let idx = 0;
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi];
+    const row = bindings.slice(idx, idx + g);
+    idx += g;
+    out += "                " + row.join("  ") + "\n";
+    if (gi === 5) out += "\n"; // blank line between halves
+  }
+  // Any remaining bindings (shouldn't happen) appended
+  if (idx < bindings.length) {
+    out += "                " + bindings.slice(idx).join("  ") + "\n";
+  }
+  out += "            ";
+  return out;
+}
+
+// --- Behavior Builder definitions ---
+// Each behavior lists its parameter "kinds". Order matches ZMK syntax.
+const BUILDERS = [
+  { key: "kp", label: "&kp — キー押下", params: ["keycode"] },
+  { key: "hyper", label: "HYPER+key — ⌃+⇧+⌥+⌘ +キー  (ZMK: &kp LC(LS(LA(LG(X)))))", params: ["keycode"], pseudo: true },
+  { key: "meh", label: "MEH+key — ⌃+⇧+⌥ +キー  (ZMK: &kp LC(LS(LA(X))))", params: ["keycode"], pseudo: true },
+  { key: "mo", label: "&mo — 押下中レイヤー有効", params: ["layer"] },
+  { key: "to", label: "&to — レイヤー切替", params: ["layer"] },
+  { key: "tog", label: "&tog — レイヤートグル", params: ["layer"] },
+  { key: "lt", label: "&lt — レイヤータップ (hold=layer, tap=key)", params: ["layer", "keycode"] },
+  { key: "lt_to_layer_0", label: "&lt_to_layer_0 — レイヤータップ→0復帰", params: ["layer", "keycode"] },
+  { key: "mt", label: "&mt — モッドタップ (hold=mod, tap=key)", params: ["mod", "keycode"] },
+  { key: "sl", label: "&sl — スティッキーレイヤー", params: ["layer"] },
+  { key: "sk", label: "&sk — スティッキーモッド", params: ["keycode"] },
+  { key: "bt", label: "&bt — Bluetooth", params: ["btcmd"] },
+  { key: "out", label: "&out — 出力先", params: ["outsel"] },
+  { key: "mkp", label: "&mkp — マウスクリック", params: ["mbtn"] },
+  { key: "msc", label: "&msc — マウススクロール", params: ["scrldir"] },
+  { key: "none", label: "&none — 無効", params: [] },
+  { key: "trans", label: "&trans — 透過(下のレイヤー)", params: [] },
+  { key: "caps_word", label: "&caps_word", params: [] },
+  { key: "key_repeat", label: "&key_repeat", params: [] },
+  { key: "bootloader", label: "&bootloader", params: [] },
+  { key: "sys_reset", label: "&sys_reset", params: [] },
+  { key: "my_sp", label: "&my_sp — #挿入(無変換→#)", params: [] },
+  { key: "my_dq", label: '&my_dq — ""挿入', params: [] },
+  { key: "my_sq", label: "&my_sq — ''挿入", params: [] },
+  { key: "my_kakko", label: "&my_kakko — ()挿入", params: [] },
+  { key: "my_br", label: "&my_br — <br>挿入", params: [] },
+  { key: "__raw", label: "(その他: テキストで直接入力)", params: [] },
+];
+
+// Pseudo behaviors that expand to specific ZMK patterns.
+// Order matters in unwrap detection: more-specific (HYPER) must be tried before less-specific (MEH).
+const PSEUDO = {
+  hyper: {
+    wrap: c => c ? `&kp LC(LS(LA(LG(${c}))))` : "",
+    unwrap: t => { const m = t.match(/^&kp\s+LC\(LS\(LA\(LG\((.+)\)\)\)\)$/); return m ? m[1] : null; },
+  },
+  meh: {
+    wrap: c => c ? `&kp LC(LS(LA(${c})))` : "",
+    unwrap: t => {
+      const m = t.match(/^&kp\s+LC\(LS\(LA\((.+)\)\)\)$/);
+      // Don't match HYPER's pattern (LG(...) inside) — HYPER takes priority
+      return m && !/^LG\(.+\)$/.test(m[1]) ? m[1] : null;
+    },
+  },
+};
+
+const MODS = [
+  { val: "LSHIFT", label: "LSHIFT (⇧L)" },
+  { val: "RSHIFT", label: "RSHIFT (⇧R)" },
+  { val: "LCTRL", label: "LCTRL (⌃L)" },
+  { val: "RCTRL", label: "RCTRL (⌃R)" },
+  { val: "LALT", label: "LALT (⌥L)" },
+  { val: "RALT", label: "RALT (⌥R)" },
+  { val: "LWIN", label: "LWIN / LGUI (⌘L)" },
+  { val: "RWIN", label: "RWIN / RGUI (⌘R)" },
+  { val: "LC(LS(LA(LGUI)))", label: "HYPER (⌃+⇧+⌥+⌘)" },
+  { val: "LC(LS(LALT))", label: "MEH (⌃+⇧+⌥)" },
+];
+const BTCMDS = ["BT_SEL 0", "BT_SEL 1", "BT_SEL 2", "BT_SEL 3", "BT_SEL 4", "BT_NXT", "BT_PRV", "BT_CLR", "BT_CLR_ALL"];
+const MBTNS = ["LCLK", "RCLK", "MCLK", "MB4", "MB5"];
+const SCRLDIRS = ["SCRL_UP", "SCRL_DOWN", "SCRL_LEFT", "SCRL_RIGHT"];
+const OUTSELS = ["OUT_USB", "OUT_BLE", "OUT_TOG"];
+
+// Keycodes for the datalist autocomplete (extracted from QUICK_KEYS &kp entries plus extras)
+const KEYCODE_LIST = Array.from(new Set([
+  ...QUICK_KEYS.filter(k => k.b.startsWith("&kp ")).map(k => k.b.slice(4)),
+  // Mod-letter combinations the user often wants
+  ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").flatMap(c => [`LS(${c})`, `LC(${c})`, `LA(${c})`, `LG(${c})`]),
+  ...[1,2,3,4,5,6,7,8,9,0].flatMap(n => [`LS(N${n})`, `LC(N${n})`, `LA(N${n})`]),
+])).sort();
+
+// --- State ---
+let state = null;
+let selectedLayerIdx = 0;
+let selectedKeyIdx = -1;
+let originalBindingsByLayer = []; // snapshot for "modified" indicator
+let zoom = 1;
+let suppressSync = false; // prevent builder<->input recursion
+let editorPane = "key";  // "key" | "bulk" | "combo"
+let comboDraft = null;   // active combo being edited/created
+let editingComboIdx = -1; // index into state.combos, or -1 for new
+let bulkSelected = new Set(); // key indices selected for bulk edit
+
+const UNIT = 60;
+
+function loadKeymap(text) {
+  try {
+    state = parseKeymap(text);
+    if (!state.combos) state.combos = [];
+    selectedLayerIdx = 0;
+    selectedKeyIdx = -1;
+    comboDraft = null;
+    editingComboIdx = -1;
+    originalBindingsByLayer = state.layers.map(l => [...l.bindings]);
+    renderAll();
+    setStatus(`読み込み完了: ${state.layers.length} レイヤー、${state.layers[0].bindings.length} キー/レイヤー、${state.combos.length} コンボ`, "success");
+  } catch (e) {
+    setStatus("パースエラー: " + e.message, "error");
+  }
+}
+
+function setStatus(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = "status" + (kind ? " " + kind : "");
+}
+
+// --- Render ---
+function renderAll() {
+  renderLayerTabs();
+  renderKeyboard();
+  renderEditor();
+  renderCombos();
+  renderBulk();
+  document.getElementById("comboCount").textContent = state.combos.length;
+}
+
+function renderLayerTabs() {
+  const root = document.getElementById("layerTabs");
+  root.innerHTML = "";
+  state.layers.forEach((l, i) => {
+    const btn = document.createElement("button");
+    btn.className = "layer-tab" + (i === selectedLayerIdx ? " active" : "");
+    btn.textContent = `${i}: ${l.name}`;
+    btn.onclick = () => { selectedLayerIdx = i; renderAll(); };
+    root.appendChild(btn);
+  });
+}
+
+function renderKeyboard() {
+  const root = document.getElementById("keyboard");
+  root.innerHTML = "";
+  root.style.transform = `scale(${zoom})`;
+  const layer = state.layers[selectedLayerIdx];
+  const bindings = layer.bindings;
+  const orig = originalBindingsByLayer[selectedLayerIdx] || [];
+  const comboMode = editorPane === "combo" && comboDraft !== null;
+  const bulkMode = editorPane === "bulk";
+  document.getElementById("comboAddBanner").hidden = !comboMode;
+  document.getElementById("bulkAddBanner").hidden = !bulkMode;
+  LAYOUT.forEach((k, i) => {
+    const w = (k.w || 1) * UNIT;
+    const h = (k.h || 1) * UNIT;
+    const div = document.createElement("div");
+    div.className = "key";
+    if ((k.w && k.w < 1) || (k.h && k.h < 1)) div.classList.add("special");
+    if (i === selectedKeyIdx && !comboMode && !bulkMode) div.classList.add("selected");
+    if (orig[i] !== undefined && bindings[i] !== orig[i]) div.classList.add("modified");
+    if (comboMode && comboDraft.keyPositions.includes(i)) div.classList.add("combo-involved");
+    if (bulkMode && bulkSelected.has(i)) div.classList.add("bulk-selected");
+    div.style.left = (k.x * UNIT) + "px";
+    div.style.top = (k.y * UNIT) + "px";
+    div.style.width = w + "px";
+    div.style.height = h + "px";
+    if (k.r) {
+      div.style.transformOrigin = "0 0";
+      div.style.transform = `rotate(${k.r}deg)`;
+    }
+    const b = bindings[i] || "&none";
+    div.appendChild(formatBindingLabel(b));
+    const pos = document.createElement("div");
+    pos.className = "key-pos";
+    pos.textContent = `[${i}]`;
+    div.appendChild(pos);
+    div.onclick = () => {
+      if (comboMode) {
+        toggleComboPosition(i);
+      } else if (bulkMode) {
+        toggleBulkKey(i);
+      } else {
+        selectedKeyIdx = i;
+        renderAll();
+      }
+    };
+    div.title = b;
+    root.appendChild(div);
+  });
+}
+
+function formatBindingLabel(binding) {
+  const wrap = document.createElement("div");
+  const parts = binding.split(/\s+/);
+  const behavior = parts[0]; // e.g. &kp
+  const args = parts.slice(1).join(" ");
+  const lab = document.createElement("div");
+  lab.className = "key-label";
+  if (behavior === "&kp" && args) {
+    lab.textContent = prettyKeycode(args);
+  } else if (behavior === "&none") {
+    lab.textContent = "—";
+    lab.style.color = "var(--muted)";
+  } else if (behavior === "&trans") {
+    lab.textContent = "▽";
+    lab.style.color = "var(--muted)";
+  } else if (behavior === "&mo") {
+    lab.textContent = `MO ${args}`;
+  } else if (behavior === "&to") {
+    lab.textContent = `TO ${args}`;
+  } else if (behavior === "&tog") {
+    lab.textContent = `TOG ${args}`;
+  } else if (behavior === "&lt") {
+    const [layer, code] = args.split(/\s+/);
+    lab.textContent = prettyKeycode(code) || "LT";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = `LT ${layer}`;
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&lt_to_layer_0") {
+    const [layer, code] = args.split(/\s+/);
+    lab.textContent = prettyKeycode(code) || "LT0";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = `LT→0 ${layer}`;
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&mt") {
+    const [mod, code] = args.split(/\s+/);
+    lab.textContent = prettyKeycode(code) || "MT";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = `MT ${prettyMod(mod)}`;
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&bt") {
+    lab.textContent = "BT";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = args.replace(/^BT_/, "");
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&mkp") {
+    lab.textContent = "M.";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = args;
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&msc") {
+    lab.textContent = "Scr";
+    const sub = document.createElement("div");
+    sub.className = "key-sub";
+    sub.textContent = args.replace(/^SCRL_/, "");
+    wrap.appendChild(lab); wrap.appendChild(sub);
+    return wrap;
+  } else if (behavior === "&bootloader") {
+    lab.textContent = "BOOT";
+    lab.style.color = "var(--danger)";
+  } else if (behavior === "&sys_reset") {
+    lab.textContent = "RESET";
+    lab.style.color = "var(--danger)";
+  } else if (behavior.startsWith("&my_")) {
+    lab.textContent = behavior.slice(1);
+    lab.style.color = "var(--accent2)";
+  } else {
+    lab.textContent = behavior.replace(/^&/, "");
+    if (args) {
+      const sub = document.createElement("div");
+      sub.className = "key-sub";
+      sub.textContent = args;
+      wrap.appendChild(lab); wrap.appendChild(sub);
+      return wrap;
+    }
+  }
+  wrap.appendChild(lab);
+  return wrap;
+}
+
+function prettyKeycode(c) {
+  if (!c) return "";
+  // HYPER as standalone mod (used inside &mt): LC(LS(LA(LGUI)))
+  if (c === "LC(LS(LA(LGUI)))") return "✦HYPER";
+  // MEH as standalone mod: LC(LS(LALT))
+  if (c === "LC(LS(LALT))") return "✱MEH";
+  // HYPER+key = LC(LS(LA(LG(X))))
+  const hyper = c.match(/^LC\(LS\(LA\(LG\((.+)\)\)\)\)$/);
+  if (hyper) return "✦" + prettyKeycode(hyper[1]);
+  // MEH+key = LC(LS(LA(X)))
+  const meh = c.match(/^LC\(LS\(LA\((.+)\)\)\)$/);
+  if (meh) return "✱" + prettyKeycode(meh[1]);
+  // LS(N1) → ⇧1, LC(C) → ⌃C, LA(TAB) → ⌥TAB, LG(L) → ⌘L
+  const m = c.match(/^(LS|RS|LC|RC|LA|RA|LG|RG)\((.+)\)$/);
+  if (m) {
+    const modMap = { LS: "⇧", RS: "⇧", LC: "⌃", RC: "⌃", LA: "⌥", RA: "⌥", LG: "⌘", RG: "⌘" };
+    return modMap[m[1]] + prettyKeycode(m[2]);
+  }
+  const map = {
+    "TAB": "Tab", "SPACE": "␣", "BSPC": "⌫", "ENTER": "↵", "ESC": "Esc", "DEL": "Del",
+    "UP": "↑", "DOWN": "↓", "LEFT": "←", "RIGHT": "→",
+    "LSHIFT": "⇧L", "RSHIFT": "⇧R", "LCTRL": "⌃L", "LALT": "⌥L", "LWIN": "⌘L",
+    "PSCRN": "PrSc", "CAPS": "Caps",
+    "C_MUTE": "Mute", "C_VOL_UP": "Vol+", "C_VOL_DN": "Vol-", "K_APP": "Menu",
+    "JP_YEN": "¥", "JP_AT": "@", "JP_LBKT": "[", "JP_RBKT": "]",
+    "JP_SEMI": ";", "JP_COLON": ":", "JP_COMMA": ",", "JP_DOT": ".", "JP_SLASH": "/",
+    "JP_MHEN": "無変換", "JP_HENK": "変換", "JP_EISU": "英数",
+    "JP_MINUS": "-", "JP_BSLH": "\\", "JP_UNDER": "_", "JP_LT": "<", "JP_RT": ">",
+    "MINUS": "-", "PLUS": "+", "EQUAL": "=", "COMMA": ",", "DOT": ".", "SLASH": "/", "SEMI": ";",
+    "KP_SLASH": "Num/", "KP_DOT": "Num.", "ASTRK": "*", "CARET": "^",
+  };
+  if (map[c]) return map[c];
+  if (/^N\d$/.test(c)) return c.slice(1);
+  if (/^F\d+$/.test(c)) return c;
+  return c;
+}
+
+function prettyMod(m) {
+  return prettyKeycode(m);
+}
+
+function renderEditor() {
+  const info = document.getElementById("keyInfo");
+  const input = document.getElementById("bindingInput");
+  const applyBtn = document.getElementById("applyBtn");
+  const revertBtn = document.getElementById("revertBtn");
+  if (selectedKeyIdx < 0) {
+    info.textContent = "キーを選択してください";
+    input.value = "";
+    input.disabled = true;
+    applyBtn.disabled = true;
+    revertBtn.disabled = true;
+  } else {
+    const layer = state.layers[selectedLayerIdx];
+    const k = LAYOUT[selectedKeyIdx];
+    const cur = layer.bindings[selectedKeyIdx];
+    const orig = originalBindingsByLayer[selectedLayerIdx][selectedKeyIdx];
+    info.innerHTML = `
+      <div class="row"><span class="label">レイヤー</span><span>${layer.name} (${selectedLayerIdx})</span></div>
+      <div class="row"><span class="label">キー位置</span><span>[${selectedKeyIdx}] col=${k.col}, row=${k.row}</span></div>
+      <div class="row"><span class="label">元の値</span><span style="font-family:monospace;">${escapeHtml(orig)}</span></div>
+    `;
+    input.value = cur;
+    input.disabled = false;
+    applyBtn.disabled = false;
+    revertBtn.disabled = (cur === orig);
+  }
+  syncBuilderFromInput();
+  renderQuickInsert();
+}
+
+// --- Behavior Builder ---
+function setBindingText(text) {
+  document.getElementById("bindingInput").value = text;
+  syncBuilderFromInput();
+}
+
+function paramLabel(p) {
+  return ({
+    layer: "レイヤー",
+    keycode: "キー",
+    mod: "モディファイア",
+    btcmd: "コマンド",
+    mbtn: "ボタン",
+    scrldir: "方向",
+    outsel: "出力",
+  })[p] || p;
+}
+
+function initBuilder() {
+  const sel = document.getElementById("bldBehavior");
+  sel.innerHTML = "";
+  for (const b of BUILDERS) {
+    const opt = document.createElement("option");
+    opt.value = b.key;
+    opt.textContent = b.label;
+    sel.appendChild(opt);
+  }
+  const dl = document.getElementById("keycodeList");
+  dl.innerHTML = "";
+  for (const k of KEYCODE_LIST) {
+    const o = document.createElement("option");
+    o.value = k;
+    dl.appendChild(o);
+  }
+}
+
+function renderBuilderParams(def, values) {
+  const root = document.getElementById("bldParams");
+  root.innerHTML = "";
+  if (!def || def.key === "__raw" || def.params.length === 0) return;
+
+  def.params.forEach((p, i) => {
+    const row = document.createElement("div");
+    row.className = "bld-row";
+    const lbl = document.createElement("label");
+    lbl.textContent = paramLabel(p);
+    row.appendChild(lbl);
+
+    let input;
+    if (p === "layer") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      (state ? state.layers : []).forEach((l, idx) => {
+        const o = document.createElement("option");
+        o.value = String(idx);
+        o.textContent = `${idx}: ${l.name}`;
+        input.appendChild(o);
+      });
+      if (values[i] != null) input.value = String(values[i]);
+    } else if (p === "keycode") {
+      input = document.createElement("input");
+      input.type = "text";
+      input.className = "bld-input";
+      input.setAttribute("list", "keycodeList");
+      input.placeholder = "TAB / A / N1 / JP_AT / LS(N1) ...";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      if (values[i] != null) input.value = values[i];
+    } else if (p === "mod") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      MODS.forEach(m => { const o = document.createElement("option"); o.value = m.val; o.textContent = m.label; input.appendChild(o); });
+      if (values[i] != null) {
+        // Joined-token form (in case parser split a multi-token mod)
+        const joined = values.slice(i, i + 1).join("");
+        const candidate = values[i];
+        const known = MODS.find(m => m.val === candidate);
+        if (known) input.value = known.val;
+        else {
+          // Append the unknown value as an extra option so we don't silently lose it
+          const o = document.createElement("option");
+          o.value = candidate; o.textContent = candidate + " (unknown)";
+          input.appendChild(o);
+          input.value = candidate;
+        }
+      }
+    } else if (p === "btcmd") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      BTCMDS.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; input.appendChild(o); });
+      const joined = values.join(" ");
+      if (BTCMDS.includes(joined)) input.value = joined;
+    } else if (p === "mbtn") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      MBTNS.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; input.appendChild(o); });
+      if (values[i] != null) input.value = values[i];
+    } else if (p === "scrldir") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      SCRLDIRS.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; input.appendChild(o); });
+      if (values[i] != null) input.value = values[i];
+    } else if (p === "outsel") {
+      input = document.createElement("select");
+      input.className = "bld-input";
+      OUTSELS.forEach(m => { const o = document.createElement("option"); o.value = m; o.textContent = m; input.appendChild(o); });
+      if (values[i] != null) input.value = values[i];
+    } else {
+      input = document.createElement("input");
+      input.className = "bld-input";
+      input.type = "text";
+      if (values[i] != null) input.value = values[i];
+    }
+    input.dataset.kind = p;
+    input.addEventListener("input", syncInputFromBuilder);
+    input.addEventListener("change", syncInputFromBuilder);
+    row.appendChild(input);
+    root.appendChild(row);
+  });
+}
+
+function syncBuilderFromInput() {
+  if (suppressSync) return;
+  const text = (document.getElementById("bindingInput").value || "").trim();
+  const sel = document.getElementById("bldBehavior");
+  const preview = document.getElementById("bldPreview");
+  preview.textContent = text || "(空)";
+
+  // Try pseudo behaviors first (HYPER+key, MEH+key) — they wrap a single keycode
+  for (const [name, pseudo] of Object.entries(PSEUDO)) {
+    const inner = pseudo.unwrap(text);
+    if (inner != null) {
+      const def = BUILDERS.find(b => b.key === name);
+      sel.value = name;
+      renderBuilderParams(def, [inner]);
+      return;
+    }
+  }
+
+  const parts = text.split(/\s+/).filter(Boolean);
+  const behavior = (parts[0] || "").replace(/^&/, "");
+  const def = BUILDERS.find(b => b.key === behavior);
+  if (def) {
+    sel.value = def.key;
+    renderBuilderParams(def, parts.slice(1));
+  } else {
+    sel.value = "__raw";
+    renderBuilderParams({ key: "__raw", params: [] }, []);
+  }
+}
+
+function syncInputFromBuilder() {
+  const sel = document.getElementById("bldBehavior");
+  const def = BUILDERS.find(b => b.key === sel.value);
+  const preview = document.getElementById("bldPreview");
+  if (!def || def.key === "__raw") return;
+  const inputs = document.querySelectorAll("#bldParams .bld-input");
+  let text;
+  if (def.pseudo && PSEUDO[def.key]) {
+    const v = inputs[0] ? inputs[0].value.trim() : "";
+    text = PSEUDO[def.key].wrap(v);
+  } else {
+    const parts = ["&" + def.key];
+    inputs.forEach(inp => {
+      const v = inp.value.trim();
+      if (v) parts.push(v);
+    });
+    text = parts.join(" ");
+  }
+  preview.textContent = text || "(空)";
+  suppressSync = true;
+  document.getElementById("bindingInput").value = text;
+  suppressSync = false;
+}
+
+function onBuilderBehaviorChange() {
+  const sel = document.getElementById("bldBehavior");
+  const def = BUILDERS.find(b => b.key === sel.value);
+  if (!def) return;
+  // Try to preserve param values that share the same kind as the previous behavior
+  // For simplicity: just keep nothing on behavior change (params start fresh).
+  renderBuilderParams(def, []);
+  syncInputFromBuilder();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+}
+
+let quickFilter = "";
+
+function renderQuickInsert() {
+  const root = document.getElementById("quickInsert");
+  const empty = document.getElementById("quickEmpty");
+  root.innerHTML = "";
+  const q = quickFilter.trim().toLowerCase();
+  const terms = q.split(/\s+/).filter(Boolean);
+  const matches = QUICK_KEYS.filter(k => {
+    if (!terms.length) return true;
+    const hay = (k.b + " " + (k.a || "")).toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+  if (matches.length === 0) {
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  matches.forEach(k => {
+    const btn = document.createElement("button");
+    btn.innerHTML = highlight(k.b, terms);
+    btn.title = k.a ? `${k.b}\n${k.a}` : k.b;
+    btn.onclick = () => {
+      setBindingText(k.b);
+      document.getElementById("bindingInput").focus();
+    };
+    root.appendChild(btn);
+  });
+}
+
+function highlight(text, terms) {
+  let html = escapeHtml(text);
+  for (const t of terms) {
+    if (!t) continue;
+    const re = new RegExp("(" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "gi");
+    html = html.replace(re, "<mark>$1</mark>");
+  }
+  return html;
+}
+
+// --- Actions ---
+function applyBinding() {
+  if (selectedKeyIdx < 0) return;
+  const val = document.getElementById("bindingInput").value.trim();
+  if (!val) { setStatus("バインディングを入力してください", "error"); return; }
+  if (!val.startsWith("&")) { setStatus("バインディングは '&' で始まる必要があります", "error"); return; }
+  state.layers[selectedLayerIdx].bindings[selectedKeyIdx] = val;
+  saveToStorage();
+  setStatus("適用 & 保存しました", "success");
+  renderAll();
+}
+
+function revertBinding() {
+  if (selectedKeyIdx < 0) return;
+  const orig = originalBindingsByLayer[selectedLayerIdx][selectedKeyIdx];
+  state.layers[selectedLayerIdx].bindings[selectedKeyIdx] = orig;
+  saveToStorage();
+  renderAll();
+  setStatus("元に戻して保存しました", "success");
+}
+
+// --- localStorage persistence ---
+const STORAGE_KEY = "mooosefree_keymap_v1";
+
+function saveToStorage() {
+  if (!state) return;
+  try {
+    const text = buildKeymap(state);
+    localStorage.setItem(STORAGE_KEY, text);
+    updateSavedIndicator();
+  } catch (e) {
+    setStatus("保存失敗: " + e.message, "error");
+  }
+}
+
+function loadFromStorage() {
+  try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; }
+}
+
+function clearStorage() {
+  try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  updateSavedIndicator();
+}
+
+function updateSavedIndicator() {
+  const el = document.getElementById("savedIndicator");
+  if (!el) return;
+  el.textContent = loadFromStorage() ? "💾 保存済み" : "未保存";
+  el.style.color = loadFromStorage() ? "var(--accent)" : "var(--muted)";
+}
+
+// --- Combo UI ---
+function switchPane(pane) {
+  editorPane = pane;
+  document.querySelectorAll(".ed-tab").forEach(t => t.classList.toggle("active", t.dataset.pane === pane));
+  document.getElementById("paneKey").hidden = (pane !== "key");
+  document.getElementById("paneBulk").hidden = (pane !== "bulk");
+  document.getElementById("paneCombo").hidden = (pane !== "combo");
+  if (pane !== "combo") {
+    comboDraft = null;
+    editingComboIdx = -1;
+  }
+  if (pane !== "bulk") {
+    bulkSelected.clear();
+  }
+  renderAll();
+}
+
+// --- Bulk edit ---
+function toggleBulkKey(i) {
+  if (bulkSelected.has(i)) bulkSelected.delete(i);
+  else bulkSelected.add(i);
+  renderBulk();
+  renderKeyboard();
+}
+
+function renderBulk() {
+  const countEl = document.getElementById("bulkCount");
+  if (countEl) countEl.textContent = `${bulkSelected.size} 個選択`;
+  const lname = document.getElementById("bulkScopeLayerName");
+  if (lname && state) lname.textContent = `(${state.layers[selectedLayerIdx].name})`;
+}
+
+function bulkSelectAll() {
+  for (let i = 0; i < LAYOUT.length; i++) bulkSelected.add(i);
+  renderBulk();
+  renderKeyboard();
+}
+
+function bulkInvert() {
+  const next = new Set();
+  for (let i = 0; i < LAYOUT.length; i++) {
+    if (!bulkSelected.has(i)) next.add(i);
+  }
+  bulkSelected = next;
+  renderBulk();
+  renderKeyboard();
+}
+
+function bulkDeselectAll() {
+  bulkSelected.clear();
+  renderBulk();
+  renderKeyboard();
+}
+
+function applyBulk() {
+  if (bulkSelected.size === 0) { setStatus("キーが選択されていません", "error"); return; }
+  const binding = document.getElementById("bulkBinding").value.trim();
+  if (!binding.startsWith("&")) { setStatus("バインディングは & で始めてください", "error"); return; }
+  const scope = document.querySelector("input[name='bulkScope']:checked").value;
+  const layerIdxs = scope === "all" ? state.layers.map((_, idx) => idx) : [selectedLayerIdx];
+  let changed = 0;
+  for (const li of layerIdxs) {
+    for (const ki of bulkSelected) {
+      if (state.layers[li].bindings[ki] !== binding) {
+        state.layers[li].bindings[ki] = binding;
+        changed++;
+      }
+    }
+  }
+  saveToStorage();
+  const layerLabel = scope === "all" ? "全レイヤー" : state.layers[selectedLayerIdx].name;
+  setStatus(`${changed}キーに「${binding}」を適用 (${layerLabel})`, "success");
+  // Keep selection so user can apply another binding if needed
+  renderAll();
+}
+
+function renderCombos() {
+  if (!state) return;
+  const root = document.getElementById("comboList");
+  root.innerHTML = "";
+  if (!state.combos.length) {
+    const empty = document.createElement("div");
+    empty.className = "combo-empty";
+    empty.textContent = "コンボはまだありません。下のボタンから作成";
+    root.appendChild(empty);
+  } else {
+    state.combos.forEach((c, i) => {
+      const card = document.createElement("div");
+      card.className = "combo-card";
+      if (i === editingComboIdx) card.classList.add("editing");
+      const head = document.createElement("div");
+      head.className = "combo-head";
+      const nameEl = document.createElement("span");
+      nameEl.className = "combo-name";
+      nameEl.textContent = c.name;
+      const bindEl = document.createElement("span");
+      bindEl.className = "combo-binding";
+      bindEl.textContent = c.binding;
+      head.appendChild(nameEl);
+      head.appendChild(bindEl);
+      card.appendChild(head);
+      const keysEl = document.createElement("div");
+      keysEl.className = "combo-keys";
+      const keyLabels = c.keyPositions.map(p => keyLabelAt(p));
+      keysEl.textContent = `位置: [${c.keyPositions.join(", ")}]  (${keyLabels.join(" + ")})  ${c.timeoutMs}ms${c.layers && c.layers.length ? "  L:" + c.layers.join(",") : ""}`;
+      card.appendChild(keysEl);
+      card.onclick = () => openComboEditor(i);
+      root.appendChild(card);
+    });
+  }
+  // Re-render the form if a draft is active
+  renderComboForm();
+}
+
+function keyLabelAt(pos) {
+  if (!state || !state.layers[selectedLayerIdx]) return `[${pos}]`;
+  const b = state.layers[selectedLayerIdx].bindings[pos];
+  if (!b) return `[${pos}]`;
+  const parts = b.split(/\s+/);
+  if (parts[0] === "&kp" && parts[1]) return prettyKeycode(parts[1]);
+  return parts[0].replace(/^&/, "");
+}
+
+function openComboEditor(idx) {
+  if (idx >= 0 && idx < state.combos.length) {
+    editingComboIdx = idx;
+    comboDraft = JSON.parse(JSON.stringify(state.combos[idx]));
+  }
+  renderAll();
+}
+
+function startNewCombo() {
+  editingComboIdx = -1;
+  comboDraft = {
+    name: nextComboName(),
+    keyPositions: [],
+    binding: "&kp ESC",
+    timeoutMs: 50,
+    layers: [],
+    priorIdleMs: null,
+  };
+  renderAll();
+}
+
+function nextComboName() {
+  const used = new Set(state.combos.map(c => c.name));
+  let i = state.combos.length + 1;
+  while (used.has(`combo_${i}`)) i++;
+  return `combo_${i}`;
+}
+
+function cancelComboEdit() {
+  comboDraft = null;
+  editingComboIdx = -1;
+  renderAll();
+}
+
+function deleteCombo() {
+  if (editingComboIdx < 0) return;
+  if (!confirm(`コンボ「${state.combos[editingComboIdx].name}」を削除しますか？`)) return;
+  state.combos.splice(editingComboIdx, 1);
+  comboDraft = null;
+  editingComboIdx = -1;
+  saveToStorage();
+  setStatus("コンボを削除しました", "success");
+  renderAll();
+}
+
+function saveCombo() {
+  if (!comboDraft) return;
+  // Read latest values from form (input listeners may have lagged on rapid edits)
+  comboDraft.name = document.getElementById("cName").value.trim() || nextComboName();
+  comboDraft.binding = document.getElementById("cBinding").value.trim();
+  comboDraft.timeoutMs = parseInt(document.getElementById("cTimeout").value, 10) || 50;
+  // comboDraft.layers is maintained by the checkbox change listeners in renderComboForm
+
+  // Validation
+  if (!/^[A-Za-z_][\w-]*$/.test(comboDraft.name)) {
+    setStatus("名前は英数字・_・- のみ使用可能です", "error"); return;
+  }
+  if (comboDraft.keyPositions.length < 2) {
+    setStatus("キーは2つ以上選択してください", "error"); return;
+  }
+  if (!comboDraft.binding.startsWith("&")) {
+    setStatus("バインディングは & で始めてください", "error"); return;
+  }
+  // Duplicate name check (excluding self)
+  const dup = state.combos.findIndex((c, i) => c.name === comboDraft.name && i !== editingComboIdx);
+  if (dup >= 0) { setStatus("同じ名前のコンボが既にあります", "error"); return; }
+
+  if (editingComboIdx >= 0) state.combos[editingComboIdx] = comboDraft;
+  else state.combos.push(comboDraft);
+
+  comboDraft = null;
+  editingComboIdx = -1;
+  saveToStorage();
+  setStatus("コンボを保存しました", "success");
+  renderAll();
+}
+
+function toggleComboPosition(pos) {
+  if (!comboDraft) return;
+  const idx = comboDraft.keyPositions.indexOf(pos);
+  if (idx >= 0) comboDraft.keyPositions.splice(idx, 1);
+  else { comboDraft.keyPositions.push(pos); comboDraft.keyPositions.sort((a, b) => a - b); }
+  renderAll();
+}
+
+function renderComboForm() {
+  const form = document.getElementById("comboForm");
+  if (!comboDraft) { form.hidden = true; return; }
+  form.hidden = false;
+
+  document.getElementById("comboFormTitle").textContent = editingComboIdx >= 0 ? `編集中: ${state.combos[editingComboIdx].name}` : "新規コンボ";
+  document.getElementById("cName").value = comboDraft.name;
+  document.getElementById("cBinding").value = comboDraft.binding;
+  document.getElementById("cTimeout").value = comboDraft.timeoutMs;
+
+  // Positions chips
+  const pos = document.getElementById("cPositions");
+  pos.innerHTML = "";
+  if (!comboDraft.keyPositions.length) {
+    const hint = document.createElement("span");
+    hint.style.color = "var(--muted)";
+    hint.style.fontSize = "11px";
+    hint.textContent = "キーボードのキーをクリックして追加";
+    pos.appendChild(hint);
+  } else {
+    comboDraft.keyPositions.forEach(p => {
+      const chip = document.createElement("span");
+      chip.className = "combo-pos-chip";
+      chip.textContent = `${p} (${keyLabelAt(p)})`;
+      chip.title = "クリックで除外";
+      chip.style.cursor = "pointer";
+      chip.onclick = (e) => { e.stopPropagation(); toggleComboPosition(p); };
+      pos.appendChild(chip);
+    });
+  }
+
+  // Layer checkboxes — keep comboDraft.layers in sync so renderAll doesn't lose state
+  const layers = document.getElementById("cLayers");
+  layers.innerHTML = "";
+  state.layers.forEach((l, idx) => {
+    const wrap = document.createElement("label");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = String(idx);
+    cb.checked = !!(comboDraft.layers && comboDraft.layers.includes(idx));
+    cb.addEventListener("change", () => {
+      if (!comboDraft) return;
+      if (!comboDraft.layers) comboDraft.layers = [];
+      const pos = comboDraft.layers.indexOf(idx);
+      if (cb.checked && pos < 0) { comboDraft.layers.push(idx); comboDraft.layers.sort((a, b) => a - b); }
+      else if (!cb.checked && pos >= 0) comboDraft.layers.splice(pos, 1);
+    });
+    wrap.appendChild(cb);
+    wrap.appendChild(document.createTextNode(`${idx}: ${l.name}`));
+    layers.appendChild(wrap);
+  });
+
+  document.getElementById("cDeleteBtn").hidden = (editingComboIdx < 0);
+}
+
+function downloadKeymap() {
+  const text = buildKeymap(state);
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "MoooseFree.keymap";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+  setStatus("ダウンロードしました", "success");
+}
+
+function previewKeymap() {
+  const text = buildKeymap(state);
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  bg.innerHTML = `
+    <div class="modal">
+      <h3 style="margin:0;">プレビュー（コピーして利用）</h3>
+      <textarea readonly></textarea>
+      <div class="modal-actions">
+        <button id="copyBtn" class="primary" style="padding:8px 14px;background:var(--accent);color:#0d0d12;border:none;border-radius:6px;cursor:pointer;font-weight:600;">クリップボードにコピー</button>
+        <button id="closeBtn" style="padding:8px 14px;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;cursor:pointer;">閉じる</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(bg);
+  const ta = bg.querySelector("textarea");
+  ta.value = text;
+  bg.querySelector("#copyBtn").onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus("クリップボードにコピーしました", "success");
+    } catch (e) {
+      ta.select();
+      document.execCommand("copy");
+      setStatus("コピーしました", "success");
+    }
+  };
+  bg.querySelector("#closeBtn").onclick = () => bg.remove();
+  bg.onclick = (e) => { if (e.target === bg) bg.remove(); };
+}
+
+function setZoom(z) {
+  zoom = Math.max(0.4, Math.min(2, z));
+  document.getElementById("zoomLabel").textContent = Math.round(zoom * 100) + "%";
+  renderKeyboard();
+}
+
+// --- Wire up ---
+document.getElementById("fileInput").addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    loadKeymap(reader.result);
+    saveToStorage();
+  };
+  reader.readAsText(file);
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (loadFromStorage() && !confirm("保存済みデータも削除して、デフォルトの.keymapに戻します。よろしいですか？")) return;
+  clearStorage();
+  loadKeymap(DEFAULT_KEYMAP);
+});
+document.getElementById("clearStorageBtn").addEventListener("click", () => {
+  if (!loadFromStorage()) { setStatus("保存データはありません", "error"); return; }
+  if (!confirm("ローカルストレージの保存データを削除します。現在の編集内容はそのまま残りますが、次回リロード時はデフォルトに戻ります。")) return;
+  clearStorage();
+  setStatus("保存データを削除しました", "success");
+});
+document.getElementById("downloadBtn").addEventListener("click", downloadKeymap);
+document.getElementById("previewBtn").addEventListener("click", previewKeymap);
+document.getElementById("applyBtn").addEventListener("click", applyBinding);
+document.getElementById("revertBtn").addEventListener("click", revertBinding);
+document.getElementById("bindingInput").addEventListener("keydown", e => {
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); applyBinding(); }
+});
+document.getElementById("bindingInput").addEventListener("input", syncBuilderFromInput);
+document.getElementById("bldBehavior").addEventListener("change", onBuilderBehaviorChange);
+document.getElementById("zoomIn").addEventListener("click", () => setZoom(zoom + 0.1));
+document.getElementById("zoomOut").addEventListener("click", () => setZoom(zoom - 0.1));
+document.getElementById("quickSearch").addEventListener("input", e => {
+  quickFilter = e.target.value;
+  renderQuickInsert();
+});
+document.querySelectorAll(".ed-tab").forEach(t => t.addEventListener("click", () => switchPane(t.dataset.pane)));
+document.getElementById("bulkSelectAll").addEventListener("click", bulkSelectAll);
+document.getElementById("bulkInvert").addEventListener("click", bulkInvert);
+document.getElementById("bulkDeselect").addEventListener("click", bulkDeselectAll);
+document.getElementById("bulkApplyBtn").addEventListener("click", applyBulk);
+document.getElementById("bulkCancelBtn").addEventListener("click", () => { bulkDeselectAll(); });
+document.querySelectorAll(".bulk-preset").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.getElementById("bulkBinding").value = btn.dataset.binding;
+  });
+});
+document.getElementById("newComboBtn").addEventListener("click", startNewCombo);
+document.getElementById("cSaveBtn").addEventListener("click", saveCombo);
+document.getElementById("cCancelBtn").addEventListener("click", cancelComboEdit);
+document.getElementById("cDeleteBtn").addEventListener("click", deleteCombo);
+// Live-update the draft as user types so positions panel reflects current name
+["cName", "cBinding", "cTimeout"].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    if (!comboDraft) return;
+    if (id === "cName") comboDraft.name = document.getElementById("cName").value;
+    if (id === "cBinding") comboDraft.binding = document.getElementById("cBinding").value;
+    if (id === "cTimeout") comboDraft.timeoutMs = parseInt(document.getElementById("cTimeout").value, 10) || 50;
+  });
+});
+
+// Init
+initBuilder();
+const savedKeymap = loadFromStorage();
+if (savedKeymap) {
+  loadKeymap(savedKeymap);
+  setStatus("💾 保存データを読み込みました（リロード前の編集を復元）", "success");
+} else {
+  loadKeymap(DEFAULT_KEYMAP);
+}
+updateSavedIndicator();
+</script>
+</body>
+</html>
