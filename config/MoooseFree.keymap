@@ -159,6 +159,7 @@
 
 
 
+
     keymap {
         compatible = "zmk,keymap";
         default_layer {
@@ -174,7 +175,7 @@
                 &kp DOWN  &kp H  &kp J  &kp K  &kp L  &kp ENTER  &kp EQUAL
                 &kp RIGHT  &none  &kp N  &kp M  &kp COMMA  &kp DOT  &kp SLASH  &kp RSHIFT
                 &kp LEFT  &mkp LCLK  &mkp RCLK  &kp RWIN  &kp LC(LS(LA(LG(F))))  &kp BSLH  &kp SEMI
-                &none  &kp F10  &kp F6  &lt_to_layer_0 1 BSPC  &lt_to_layer_0 2 RALT
+                &none  &kp F10  &kp F6  &lt_to_layer_0 1 BSPC  &kp RALT
                 &bt BT_CLR_ALL  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &bt BT_SEL 5  &bt BT_CLR  &bootloader
             >;
             sensor-bindings = <&mouse_scroll2 SCRL_UP SCRL_DOWN &mouse_scroll SCRL_DOWN SCRL_UP>;
@@ -210,7 +211,7 @@
                 &kp DOWN  &none  &none  &none  &kp LBKT  &kp RBKT  &kp LS(SQT)
                 &kp RIGHT  &none  &none  &none  &none  &kp LBRC  &kp RBRC  &none
                 &kp LEFT  &none  &none  &none  &none  &none  &none
-                &none  &none  &none  &none  &none
+                &none  &none  &none  &none  &kp LS(RALT)
                 &kp C  &kp D  &kp E  &kp PSCRN  &kp G  &kp H  &kp G  &kp H
             >;
             sensor-bindings = <&inc_dec_kp LC(LS(TAB)) LC(TAB) &inc_dec_kp LC(LS(TAB)) LC(TAB)>;
