@@ -161,6 +161,7 @@
 
 
 
+
     keymap {
         compatible = "zmk,keymap";
         default_layer {
@@ -168,18 +169,18 @@
                 &kp TAB  &kp Q  &kp W  &kp E  &kp R  &kp T  &kp RIGHT
                 &kp LCTRL  &kp A  &kp S  &kp D  &kp F  &kp G  &kp LEFT
                 &kp LSHIFT  &kp Z  &kp X  &kp C  &kp V  &kp B  &none  &kp DOWN
-                &kp TILDE  &kp GRAVE  &kp LC(LS(LA(LG(K))))  &kp LWIN  &none  &none  &kp UP
+                &kp TILDE  &kp GRAVE  &kp LC(LS(LA(LG(K))))  &kp LWIN  &mkp MB4  &mkp MB5  &kp UP
                 &lt_to_layer_0 2 LALT  &lt 1 SPACE  &kp ESC  &mo 4  &none
                 &bootloader  &kp D  &kp C  &kp D  &bt BT_SEL 4  &bt BT_SEL 5  &bt BT_SEL 6  &bt BT_CLR
 
                 &kp UP  &kp Y  &kp U  &kp I  &kp O  &kp P  &kp MINUS
                 &kp DOWN  &kp H  &kp J  &kp K  &kp L  &kp ENTER  &kp EQUAL
-                &kp RIGHT  &none  &kp N  &kp M  &kp COMMA  &kp DOT  &kp SLASH  &kp RSHIFT
+                &kp RIGHT  &kp LC(LS(LA(LG(F))))  &kp N  &kp M  &kp COMMA  &kp DOT  &kp SLASH  &kp RSHIFT
                 &kp LEFT  &mkp LCLK  &mkp RCLK  &kp RWIN  &kp LC(LS(LA(LG(F))))  &kp BSLH  &kp SEMI
                 &none  &kp F10  &kp F6  &lt_to_layer_0 1 BSPC  &kp RALT
                 &bt BT_CLR_ALL  &kp LS(RALT)  &bt BT_SEL 2  &bt BT_SEL 3  &bt BT_SEL 4  &bt BT_SEL 5  &bt BT_CLR  &bootloader
             >;
-            sensor-bindings = <&mouse_scroll2 SCRL_UP SCRL_DOWN &mouse_scroll SCRL_DOWN SCRL_UP>;
+            sensor-bindings = <&mouse_scroll2 SCRL_UP SCRL_DOWN &mouse_scroll SCRL_RIGHT SCRL_LEFT>;
         };
         ARROW {
             bindings = <
