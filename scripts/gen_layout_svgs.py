@@ -4,7 +4,7 @@ import re
 import os
 import json
 
-ROOT = "/Users/jewel/orca/workspaces/zmk-MoooseFree/mappings3"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KEYRAYOUT = os.path.join(ROOT, "keyrayout.md")
 KEYMAP = os.path.join(ROOT, "mf.keymap")
 OUT_DIR = os.path.join(ROOT, "images")
