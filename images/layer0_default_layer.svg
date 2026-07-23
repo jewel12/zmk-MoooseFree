@@ -133,14 +133,14 @@
 <text class="kt" x="237.5" y="239.0">LWin</text>
 </g>
 <g transform="rotate(30 476.0 260.0)">
-<rect class="key" x="446.0" y="230.0" width="60.0" height="60.0" rx="4" fill="#2a2a30"/>
+<rect class="key" x="446.0" y="230.0" width="60.0" height="60.0" rx="4" fill="#3a3a48"/>
 <text class="ks" x="451.0" y="239.0" text-anchor="start">26</text>
-<text class="kt" x="476.0" y="263.0"></text>
+<text class="kt" x="476.0" y="263.0">C_AC_BACK</text>
 </g>
 <g transform="rotate(30 530.0 290.0)">
-<rect class="key" x="500.0" y="260.0" width="60.0" height="60.0" rx="4" fill="#2a2a30"/>
+<rect class="key" x="500.0" y="260.0" width="60.0" height="60.0" rx="4" fill="#3a3a48"/>
 <text class="ks" x="505.0" y="269.0" text-anchor="start">27</text>
-<text class="kt" x="530.0" y="293.0"></text>
+<text class="kt" x="530.0" y="293.0">C_AC_FORWARD</text>
 </g>
 <g>
 <rect class="key" x="530.0" y="350.0" width="30.0" height="30.0" rx="4" fill="#3a3a48"/>
@@ -290,9 +290,10 @@
 <text class="kt" x="665.0" y="398.0">→</text>
 </g>
 <g transform="rotate(-30 626.0 275.0)">
-<rect class="key" x="596.0" y="245.0" width="60.0" height="60.0" rx="4" fill="#2a2a30"/>
+<rect class="key" x="596.0" y="245.0" width="60.0" height="60.0" rx="4" fill="#3a3a48"/>
 <text class="ks" x="601.0" y="254.0" text-anchor="start">57</text>
-<text class="kt" x="626.0" y="278.0"></text>
+<text class="kt" x="626.0" y="272.5">Hyp</text>
+<text class="kt" x="626.0" y="283.5">F</text>
 </g>
 <g>
 <rect class="key" x="800.0" y="152.0" width="60.0" height="60.0" rx="4" fill="#3a3a48"/>
